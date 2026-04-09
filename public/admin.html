@@ -3,631 +3,691 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Admin — Golf Betting</title>
+  <title>Golf Betting — Admin</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --green-dark:  #1a5c1a;
-      --green-mid:   #2e7d2e;
+      --green-dark: #1a5c1a;
+      --green-mid: #2e7d2e;
       --green-light: #e8f5e9;
-      --amber:       #f57c00;
-      --red:         #c62828;
-      --bg:          #f0f2f0;
+      --amber: #f57c00;
+      --bg: #f0f2f0;
+      --white: #ffffff;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #c8d8c8;
+      --danger: #c62828;
+      --radius: 8px;
     }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: #1a1a1a;
-    }
-
-    header {
-      background: #333;
-      color: white;
-      padding: 14px 16px;
-      text-align: center;
-    }
-    header h1 { font-size: 1.1rem; font-weight: 800; }
-    header p  { font-size: 0.78rem; opacity: 0.7; margin-top: 3px; }
-
-    .container { padding: 16px; max-width: 520px; margin: 0 auto; }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .card-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #777;
-      letter-spacing: 0.5px;
-      margin-bottom: 14px;
-    }
-
-    label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 5px; color: #333; }
-
-    select {
-      width: 100%;
-      padding: 12px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
-      font-size: 1rem;
-      margin-bottom: 14px;
-      background: #fafafa;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    select:focus { outline: none; border-color: var(--green-mid); }
-
-    .btn {
-      width: 100%;
-      padding: 13px;
-      border: none;
-      border-radius: 9px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-bottom: 8px;
-    }
-    .btn-green  { background: var(--green-dark); color: white; }
-    .btn-amber  { background: var(--amber); color: white; }
-    .btn-red    { background: var(--red); color: white; }
-    .btn-gray   { background: #888; color: white; }
-    .btn:hover  { opacity: 0.88; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-
-    .status-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .status-label { font-weight: 600; font-size: 0.9rem; }
-    .badge {
-      display: inline-block;
-      padding: 3px 12px;
-      border-radius: 12px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .badge-open   { background: #4caf50; color: white; }
-    .badge-closed { background: #ff9800; color: white; }
-    .badge-final  { background: #1976d2; color: white; }
-
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn-row .btn { margin-bottom: 0; }
-
-    .msg-error   { background: #ffebee; color: #c62828; border-radius: 8px; padding: 10px 12px; font-size: 0.87rem; margin-bottom: 10px; }
-    .msg-success { background: var(--green-light); color: #1b5e20; border-radius: 8px; padding: 10px 12px; font-size: 0.87rem; margin-bottom: 10px; }
-
-    /* Stats */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
-    .stat-box { background: #f7f7f7; border-radius: 8px; padding: 10px; text-align: center; }
-    .stat-val   { font-size: 1.2rem; font-weight: 800; color: var(--green-dark); }
-    .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-top: 2px; }
-
-    /* Payout table */
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    thead th { text-align: left; padding: 6px 5px 8px; color: #888; font-size: 0.72rem; text-transform: uppercase; border-bottom: 2px solid #eee; }
-    tbody td { padding: 9px 5px; border-bottom: 1px solid #f2f2f2; }
-    tbody tr:last-child td { border-bottom: none; }
-
-    .pill {
-      display: inline-block;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .pill-win  { background: var(--green-dark); color: white; }
-    .pill-show { background: var(--amber); color: white; }
-
-    .payout-win  { color: var(--green-dark); font-weight: 800; }
-    .payout-zero { color: #bbb; }
-
-    .net-win  { color: var(--green-dark); font-weight: 800; }
-    .net-loss { color: var(--red); font-weight: 700; }
-    .net-even { color: #888; }
-
-    .divider { border: none; border-top: 1px solid #eee; margin: 12px 0; }
-
-    .handicap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .hcp-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: #f7f7f7; border-radius: 6px; font-size: 0.85rem; }
-    .hcp-name { font-weight: 600; }
-    .hcp-val  { color: #555; font-size: 0.8rem; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+    header { background: var(--green-dark); color: white; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header span { font-size: 0.85rem; opacity: 0.8; margin-left: auto; }
+    nav { background: var(--green-mid); display: flex; overflow-x: auto; scrollbar-width: none; }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { background: none; border: none; color: rgba(255,255,255,0.75); padding: 12px 18px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.15s; }
+    nav button.active { color: white; border-bottom-color: #a5d6a7; }
+    nav button:hover { color: white; background: rgba(255,255,255,0.1); }
+    .tab { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
+    .tab.active { display: block; }
+    .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 1rem; font-weight: 600; color: var(--green-dark); margin-bottom: 12px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+    .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+    input, select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.9rem; width: 100%; background: white; }
+    input:focus, select:focus { outline: 2px solid var(--green-mid); border-color: var(--green-mid); }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: opacity 0.15s; white-space: nowrap; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--green-mid); color: white; }
+    .btn-secondary { background: var(--amber); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-outline { background: transparent; border: 1px solid var(--green-mid); color: var(--green-mid); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge-setup { background: #e3f2fd; color: #1565c0; }
+    .badge-open { background: #e8f5e9; color: #2e7d32; }
+    .badge-closed { background: #fff3e0; color: #e65100; }
+    .badge-final { background: #fce4ec; color: #ad1457; }
+    .badge-locked { background: #eceff1; color: #546e7a; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 8px 10px; background: var(--green-light); color: var(--green-dark); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+    .hole-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .hole-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+    .hole-card h4 { font-size: 0.85rem; font-weight: 600; color: var(--green-dark); margin-bottom: 6px; }
+    .hole-card .pool { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+    .hole-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .inline-form { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .inline-form label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 4px; cursor: pointer; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat-box { background: var(--green-light); border-radius: var(--radius); padding: 12px; text-align: center; }
+    .stat-box .val { font-size: 1.3rem; font-weight: 700; color: var(--green-dark); }
+    .stat-box .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .msg { padding: 10px 14px; border-radius: var(--radius); font-size: 0.875rem; margin-bottom: 12px; }
+    .msg-success { background: #e8f5e9; color: #1b5e20; }
+    .msg-error { background: #ffebee; color: #b71c1c; }
+    .round-section { margin-bottom: 20px; }
+    .round-section h3 { font-size: 0.95rem; font-weight: 600; color: var(--green-dark); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .scores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .scores-grid { grid-template-columns: 1fr; } .hole-grid { grid-template-columns: repeat(2, 1fr); } }
+    .no-data { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
+    .pvp-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .pvp-card .pvp-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .pvp-card .players { font-weight: 600; font-size: 0.95rem; }
+    .pvp-card .pools { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
   </style>
 </head>
 <body>
-
 <header>
-  <h1>Admin Panel</h1>
-  <p>Golf Tournament Betting</p>
+  <h1>Golf Betting Admin</h1>
+  <span id="headerStatus"></span>
 </header>
+<nav>
+  <button class="active" onclick="switchTab('tournament')">Tournament</button>
+  <button onclick="switchTab('players')">Players</button>
+  <button onclick="switchTab('betting')">Betting</button>
+  <button onclick="switchTab('scores')">Scores</button>
+  <button onclick="switchTab('results')">Results</button>
+  <button onclick="switchTab('holes')">Holes</button>
+  <button onclick="switchTab('pvp')">PvP</button>
+</nav>
 
-<div class="container">
-
-  <!-- Status & Controls -->
-  <div class="card">
-    <div class="card-title">Betting Status</div>
-    <div class="status-row">
-      <span class="status-label">Current Status:</span>
-      <span id="status-badge" class="badge badge-open">Open</span>
-    </div>
-    <div id="ctrl-msg"></div>
-    <div class="btn-row">
-      <button class="btn btn-green" id="btn-open"  onclick="setStatus('open')">Open Betting</button>
-      <button class="btn btn-amber" id="btn-close" onclick="setStatus('closed')">Close Betting</button>
-    </div>
-  </div>
-
-  <!-- Live Stats -->
-  <div class="card">
-    <div class="card-title">Live Stats</div>
-    <div class="stats-grid">
-      <div class="stat-box">
-        <div class="stat-val" id="stat-bets">0</div>
-        <div class="stat-label">Bets</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-win">$0</div>
-        <div class="stat-label">Win Pool</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-show">$0</div>
-        <div class="stat-label">Show Pool</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Results Entry -->
-  <div class="card" id="results-card">
-    <div class="card-title">Enter Results</div>
-    <div id="results-msg"></div>
-
-    <label for="sel-1st">1st Place</label>
-    <select id="sel-1st"><option value="">-- Select --</option></select>
-
-    <label for="sel-2nd">2nd Place</label>
-    <select id="sel-2nd"><option value="">-- Select --</option></select>
-
-    <label for="sel-3rd">3rd Place</label>
-    <select id="sel-3rd"><option value="">-- Select --</option></select>
-
-    <button class="btn btn-green" id="results-submit-btn" onclick="submitResults()">Calculate Payouts</button>
-  </div>
-
-  <!-- Payouts (shown after results) -->
-  <div id="payouts-section" style="display:none">
-
-    <div class="card" id="results-summary-card">
-      <div class="card-title">Results</div>
-      <div id="results-summary"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Payout Summary (by Bettor)</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Bettor</th>
-            <th style="text-align:right">Wagered</th>
-            <th style="text-align:right">Payout</th>
-            <th style="text-align:right">Net</th>
-          </tr>
-        </thead>
-        <tbody id="summary-tbody"></tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Individual Bet Detail</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Bettor</th>
-            <th>Bet</th>
-            <th style="text-align:right">Wagered</th>
-            <th style="text-align:right">Payout</th>
-          </tr>
-        </thead>
-        <tbody id="detail-tbody"></tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <!-- Round Scores -->
-  <div class="card">
-    <div class="card-title">Round Scores — Gross Input</div>
-    <div id="scores-msg"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div>
-        <div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;color:#444">Round 1</div>
-        <div id="r1-inputs"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-          <button class="btn btn-green" onclick="saveRound(1)">Save R1</button>
-          <button class="btn btn-gray"  onclick="clearRound(1)">Clear R1</button>
-        </div>
-      </div>
-      <div>
-        <div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;color:#444">Round 2</div>
-        <div id="r2-inputs"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-          <button class="btn btn-green" onclick="saveRound(2)">Save R2</button>
-          <button class="btn btn-gray"  onclick="clearRound(2)">Clear R2</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Standings -->
-  <div class="card">
-    <div class="card-title">Net Standings</div>
-    <div id="standings-empty" style="text-align:center;color:#aaa;padding:16px;font-size:0.88rem">No scores posted yet.</div>
-    <table id="standings-table" style="display:none">
-      <thead>
-        <tr>
-          <th style="width:32px">#</th>
-          <th>Player</th>
-          <th style="text-align:right">R1</th>
-          <th style="text-align:right">R2</th>
-          <th style="text-align:right">Total</th>
-        </tr>
-      </thead>
-      <tbody id="standings-tbody"></tbody>
-    </table>
-  </div>
-
-  <!-- Handicaps Reference -->
-  <div class="card">
-    <div class="card-title">Handicap Reference</div>
-    <div class="handicap-grid" id="hcp-grid"></div>
-    <p style="font-size:0.73rem;color:#aaa;margin-top:10px">Edit handicaps in <code>server.js</code> ENTRANTS config.</p>
-  </div>
-
-  <!-- Danger Zone -->
-  <div class="card">
-    <div class="card-title">Danger Zone</div>
-    <button class="btn btn-red" onclick="resetAll()">Reset All Bets &amp; Results</button>
-  </div>
-
+<div id="tab-tournament" class="tab active">
+  <div id="tournamentContent"></div>
+</div>
+<div id="tab-players" class="tab">
+  <div id="playersContent"></div>
+</div>
+<div id="tab-betting" class="tab">
+  <div id="bettingContent"></div>
+</div>
+<div id="tab-scores" class="tab">
+  <div id="scoresContent"></div>
+</div>
+<div id="tab-results" class="tab">
+  <div id="resultsContent"></div>
+</div>
+<div id="tab-holes" class="tab">
+  <div id="holesContent"></div>
+</div>
+<div id="tab-pvp" class="tab">
+  <div id="pvpContent"></div>
 </div>
 
 <script>
-  let appState = null;
+let state = null;
+let activeTab = 'tournament';
 
-  function fmt(n) {
-    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('nav button').forEach((b, i) => {
+    const tabs = ['tournament','players','betting','scores','results','holes','pvp'];
+    b.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  renderTab();
+}
+
+function fmt(n) { return '$' + Number(n).toFixed(2); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function api(method, url, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+async function loadState() {
+  try {
+    state = await api('GET', '/api/state');
+    renderAll();
+  } catch(e) { console.error(e); }
+}
+
+function renderAll() {
+  const t = state && state.tournament;
+  const el = document.getElementById('headerStatus');
+  if (t) {
+    el.textContent = t.name + ' — ' + (t.status.charAt(0).toUpperCase() + t.status.slice(1));
+  } else {
+    el.textContent = 'No Active Tournament';
   }
+  renderTab();
+}
 
-  function fmtShort(n) {
-    if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'k';
-    return '$' + Math.round(n);
+function renderTab() {
+  switch(activeTab) {
+    case 'tournament': renderTournament(); break;
+    case 'players': renderPlayers(); break;
+    case 'betting': renderBetting(); break;
+    case 'scores': renderScores(); break;
+    case 'results': renderResults(); break;
+    case 'holes': renderHoles(); break;
+    case 'pvp': renderPvp(); break;
   }
+}
 
-  function renderState(s) {
-    appState = s;
+// ─── Tournament Tab ───────────────────────────────────────────────────────────
+function renderTournament() {
+  const el = document.getElementById('tournamentContent');
+  const t = state && state.tournament;
 
-    // Status badge
-    const badge = document.getElementById('status-badge');
-    const labels = { open: 'Open', closed: 'Closed', final: 'Final' };
-    badge.textContent = labels[s.status] || s.status;
-    badge.className = 'badge badge-' + s.status;
-
-    // Stats
-    document.getElementById('stat-bets').textContent  = s.bets.length;
-    document.getElementById('stat-win').textContent   = fmtShort(s.winPool);
-    document.getElementById('stat-show').textContent  = fmtShort(s.showPool);
-
-    // Populate selects (once)
-    const sels = ['sel-1st', 'sel-2nd', 'sel-3rd'];
-    if (document.getElementById('sel-1st').options.length <= 1) {
-      sels.forEach(id => {
-        const sel = document.getElementById(id);
-        s.entrants.forEach(e => {
-          const o = document.createElement('option');
-          o.value = e.name;
-          o.textContent = e.name;
-          sel.appendChild(o);
-        });
-      });
-    }
-
-    // Handicap grid
-    const grid = document.getElementById('hcp-grid');
-    if (!grid.children.length) {
-      grid.innerHTML = s.entrants.map(e =>
-        `<div class="hcp-item">
-          <span class="hcp-name">${e.name.split(' ').pop()}</span>
-          <span class="hcp-val">${e.handicap}</span>
-        </div>`
-      ).join('');
-    }
-
-    // Results form — always visible; pre-populate if results already exist
-    const resultsBtn = document.getElementById('results-submit-btn');
-    if (s.results) {
-      const [r1, r2, r3] = s.results;
-      document.getElementById('sel-1st').value = r1;
-      document.getElementById('sel-2nd').value = r2;
-      document.getElementById('sel-3rd').value = r3;
-      resultsBtn.textContent = 'Update Results';
-    } else {
-      resultsBtn.textContent = 'Calculate Payouts';
-    }
-
-    // Payouts section — show when results exist
-    if (s.status === 'final' && s.payouts && s.results) {
-      document.getElementById('payouts-section').style.display = 'block';
-      renderPayouts(s);
-    } else {
-      document.getElementById('payouts-section').style.display = 'none';
-    }
-  }
-
-  function renderPayouts(s) {
-    const [first, second, third] = s.results;
-
-    // Summary
-    document.getElementById('results-summary').innerHTML = `
-      <p style="font-size:1rem;font-weight:700;color:#1a5c1a;padding:4px 0">🥇 ${first}</p>
-      <p style="font-size:0.95rem;font-weight:600;padding:4px 0">🥈 ${second}</p>
-      <p style="font-size:0.95rem;font-weight:600;padding:4px 0">🥉 ${third}</p>
-    `;
-
-    // Aggregate by bettor
-    const agg = {};
-    s.payouts.forEach(p => {
-      if (!agg[p.bettor]) agg[p.bettor] = { bet: 0, payout: 0 };
-      agg[p.bettor].bet    += p.amount;
-      agg[p.bettor].payout += p.payout;
-    });
-
-    const summaryRows = Object.entries(agg)
-      .map(([name, { bet, payout }]) => ({ name, bet, payout, net: payout - bet }))
-      .sort((a, b) => b.payout - a.payout);
-
-    document.getElementById('summary-tbody').innerHTML = summaryRows.map(r => {
-      const cls  = r.net > 0 ? 'net-win' : r.net < 0 ? 'net-loss' : 'net-even';
-      const sign = r.net > 0 ? '+' : '';
-      return `<tr>
-        <td><strong>${r.name}</strong></td>
-        <td style="text-align:right">${fmt(r.bet)}</td>
-        <td style="text-align:right">${r.payout > 0 ? fmt(r.payout) : '—'}</td>
-        <td style="text-align:right" class="${cls}">${sign}${fmt(r.net)}</td>
-      </tr>`;
-    }).join('');
-
-    // Detail
-    const details = [...s.payouts].sort((a, b) => b.payout - a.payout);
-    document.getElementById('detail-tbody').innerHTML = details.map(p => {
-      let payoutCell;
-      if (p.refund) {
-        payoutCell = `<span style="color:#f57c00;font-weight:700">${fmt(p.payout)}</span> <span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:1px 5px;border-radius:4px;font-weight:700">REFUND</span>`;
-      } else if (p.payout > 0) {
-        payoutCell = `<span class="payout-win">${fmt(p.payout)}</span>`;
-      } else {
-        payoutCell = `<span class="payout-zero">—</span>`;
-      }
-      return `<tr>
-        <td>${p.bettor}</td>
-        <td><span class="pill pill-${p.type}">${p.type}</span> ${p.entrant}</td>
-        <td style="text-align:right">${fmt(p.amount)}</td>
-        <td style="text-align:right">${payoutCell}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  async function fetchState() {
-    try {
-      const res = await fetch('/api/state');
-      if (res.ok) renderState(await res.json());
-    } catch (e) { /* silent */ }
-  }
-
-  async function setStatus(status) {
-    const msgEl = document.getElementById('ctrl-msg');
-    try {
-      const res = await fetch('/api/admin/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        msgEl.innerHTML = `<div class="msg-error">${data.error}</div>`;
-      } else {
-        msgEl.innerHTML = `<div class="msg-success">Betting ${status === 'open' ? 'opened' : 'closed'}.</div>`;
-        fetchState();
-      }
-    } catch (e) {
-      msgEl.innerHTML = '<div class="msg-error">Network error.</div>';
-    }
-  }
-
-  async function submitResults() {
-    const first  = document.getElementById('sel-1st').value;
-    const second = document.getElementById('sel-2nd').value;
-    const third  = document.getElementById('sel-3rd').value;
-    const msgEl  = document.getElementById('results-msg');
-
-    msgEl.innerHTML = '';
-
-    if (!first || !second || !third) {
-      msgEl.innerHTML = '<div class="msg-error">Select all 3 places.</div>'; return;
-    }
-    if (new Set([first, second, third]).size !== 3) {
-      msgEl.innerHTML = '<div class="msg-error">All 3 must be different players.</div>'; return;
-    }
-
-    const isUpdate = appState?.results != null;
-    const confirmMsg = isUpdate
-      ? `Update results?\n\n1st: ${first}\n2nd: ${second}\n3rd: ${third}\n\nPayouts will be recalculated.`
-      : `Confirm results?\n\n1st: ${first}\n2nd: ${second}\n3rd: ${third}\n\nThis will close betting and calculate payouts.`;
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await fetch('/api/results', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ first, second, third })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        msgEl.innerHTML = `<div class="msg-error">${data.error}</div>`;
-      } else {
-        fetchState();
-      }
-    } catch (e) {
-      msgEl.innerHTML = '<div class="msg-error">Network error.</div>';
-    }
-  }
-
-  async function resetAll() {
-    if (!confirm('RESET ALL BETS AND RESULTS?\n\nThis cannot be undone.')) return;
-    if (!confirm('Are you sure? All bets will be permanently deleted.')) return;
-
-    try {
-      const res = await fetch('/api/admin/reset', { method: 'POST' });
-      if (res.ok) {
-        document.getElementById('ctrl-msg').innerHTML = '<div class="msg-success">All data reset.</div>';
-        // Clear select values
-        ['sel-1st','sel-2nd','sel-3rd'].forEach(id => document.getElementById(id).value = '');
-        fetchState();
-      }
-    } catch (e) {
-      document.getElementById('ctrl-msg').innerHTML = '<div class="msg-error">Network error.</div>';
-    }
-  }
-
-  // ---- Scores ----
-
-  let scoresBuilt = false;
-
-  function buildScoreInputs(entrants) {
-    if (scoresBuilt) return;
-    scoresBuilt = true;
-    ['r1', 'r2'].forEach((round, idx) => {
-      const container = document.getElementById(`r${idx + 1}-inputs`);
-      container.innerHTML = entrants.map(e => `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:0.82rem;font-weight:600;color:#333">${e.name.split(' ')[0]}</span>
-          <input type="number" id="score-${round}-${e.name}" placeholder="Gross"
-            min="50" max="150" step="1"
-            style="width:68px;padding:6px 8px;border:1.5px solid #d0d0d0;border-radius:6px;font-size:0.9rem;text-align:center">
+  if (!t) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Create New Tournament</h2>
+        <div id="createMsg"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Name</label><input id="tName" placeholder="Spring Classic"></div>
+          <div class="form-group"><label>Course</label><input id="tCourse" placeholder="Pebble Beach"></div>
         </div>
-      `).join('');
+        <div class="form-row">
+          <div class="form-group"><label>Date</label><input id="tDate" type="date"></div>
+          <div class="form-group"><label>Rounds</label><input id="tRounds" type="number" value="2" min="1" max="4"></div>
+          <div class="form-group"><label>HCP Allowance %</label><input id="tHcp" type="number" value="100" min="0" max="100"></div>
+        </div>
+        <button class="btn btn-primary" onclick="createTournament()">Create Tournament</button>
+      </div>`;
+    return;
+  }
+
+  const statusBadge = `<span class="badge badge-${t.status}">${t.status.toUpperCase()}</span>`;
+  el.innerHTML = `
+    <div class="card">
+      <h2>Current Tournament ${statusBadge}</h2>
+      <div id="editMsg"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Name</label><input id="eName" value="${esc(t.name)}"></div>
+        <div class="form-group"><label>Course</label><input id="eCourse" value="${esc(t.course)}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input id="eDate" type="date" value="${esc(t.date)}"></div>
+        <div class="form-group"><label>Rounds</label><input id="eRounds" type="number" value="${t.rounds}" min="1" max="4"></div>
+        <div class="form-group"><label>HCP Allowance %</label><input id="eHcp" type="number" value="${t.hcp_allowance}" min="0" max="100"></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveTournament()">Save Changes</button>
+    </div>`;
+}
+
+async function createTournament() {
+  try {
+    await api('POST', '/api/admin/tournament', {
+      name: document.getElementById('tName').value,
+      course: document.getElementById('tCourse').value,
+      date: document.getElementById('tDate').value,
+      rounds: parseInt(document.getElementById('tRounds').value),
+      hcp_allowance: parseInt(document.getElementById('tHcp').value)
     });
+    await loadState();
+  } catch(e) {
+    document.getElementById('createMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
   }
+}
 
-  function populateScoreInputs(entrants, scores) {
-    entrants.forEach(e => {
-      const r1El = document.getElementById(`score-r1-${e.name}`);
-      const r2El = document.getElementById(`score-r2-${e.name}`);
-      if (r1El && scores.r1[e.name] !== undefined) r1El.value = scores.r1[e.name];
-      if (r2El && scores.r2[e.name] !== undefined) r2El.value = scores.r2[e.name];
+async function saveTournament() {
+  try {
+    await api('PUT', '/api/admin/tournament', {
+      name: document.getElementById('eName').value,
+      course: document.getElementById('eCourse').value,
+      date: document.getElementById('eDate').value,
+      rounds: parseInt(document.getElementById('eRounds').value),
+      hcp_allowance: parseInt(document.getElementById('eHcp').value)
     });
+    document.getElementById('editMsg').innerHTML = `<div class="msg msg-success">Saved.</div>`;
+    await loadState();
+  } catch(e) {
+    document.getElementById('editMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
   }
+}
 
-  async function saveRound(round) {
-    const msgEl = document.getElementById('scores-msg');
-    const prefix = `r${round}`;
-    const scores = {};
-    if (!appState) return;
-    for (const e of appState.entrants) {
-      const el = document.getElementById(`score-${prefix}-${e.name}`);
-      if (el && el.value !== '') scores[e.name] = Number(el.value);
-    }
-    if (Object.keys(scores).length === 0) {
-      msgEl.innerHTML = '<div class="msg-error">No scores entered.</div>';
-      return;
-    }
-    try {
-      const res = await fetch('/api/admin/scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ round, scores }),
-      });
-      const data = await res.json();
-      if (data.warnings?.length) {
-        msgEl.innerHTML = `<div class="msg-error">${data.warnings.join('<br>')}</div>`;
-      } else {
-        msgEl.innerHTML = `<div class="msg-success">Round ${round} scores saved.</div>`;
+// ─── Players Tab ──────────────────────────────────────────────────────────────
+function renderPlayers() {
+  const el = document.getElementById('playersContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+
+  const players = state.players || [];
+  const hcp = t.hcp_allowance;
+  let rows = players.map(p => {
+    const eff = Math.round(p.course_handicap * hcp / 100);
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td>${p.handicap_index}</td>
+      <td>${p.course_handicap}</td>
+      <td>${eff}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editPlayer(${p.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlayer(${p.id})">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <h2>Add Player</h2>
+      <div id="addPlayerMsg"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Name</label><input id="pName" placeholder="Player name"></div>
+        <div class="form-group"><label>Handicap Index</label><input id="pHcpIdx" type="number" value="0" step="0.1"></div>
+        <div class="form-group"><label>Course Handicap</label><input id="pCourseHcp" type="number" value="0"></div>
+        <div style="display:flex;align-items:flex-end;"><button class="btn btn-primary" onclick="addPlayer()">Add Player</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Players (HCP Allowance: ${hcp}%)</h2>
+      ${players.length === 0 ? '<div class="no-data">No players added yet.</div>' : `
+      <table>
+        <thead><tr><th>Name</th><th>HCP Index</th><th>Course HCP</th><th>Eff. HCP</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`}
+    </div>`;
+}
+
+async function addPlayer() {
+  try {
+    await api('POST', '/api/admin/players', {
+      name: document.getElementById('pName').value,
+      handicap_index: parseFloat(document.getElementById('pHcpIdx').value) || 0,
+      course_handicap: parseInt(document.getElementById('pCourseHcp').value) || 0
+    });
+    await loadState();
+  } catch(e) {
+    document.getElementById('addPlayerMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
+  }
+}
+
+function editPlayer(id) {
+  const p = state.players.find(x => x.id === id);
+  if (!p) return;
+  const name = prompt('Name:', p.name);
+  if (name === null) return;
+  const hcpIdx = prompt('Handicap Index:', p.handicap_index);
+  if (hcpIdx === null) return;
+  const courseHcp = prompt('Course Handicap:', p.course_handicap);
+  if (courseHcp === null) return;
+  api('PUT', `/api/admin/players/${id}`, { name, handicap_index: parseFloat(hcpIdx), course_handicap: parseInt(courseHcp) })
+    .then(() => loadState()).catch(e => alert(e.message));
+}
+
+async function deletePlayer(id) {
+  if (!confirm('Delete this player?')) return;
+  try { await api('DELETE', `/api/admin/players/${id}`); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── Betting Tab ──────────────────────────────────────────────────────────────
+function renderBetting() {
+  const el = document.getElementById('bettingContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+
+  const bets = state.bets || [];
+  const players = state.players || [];
+  const pMap = {};
+  for (const p of players) pMap[p.id] = p;
+
+  const betRows = [...bets].reverse().map(b => `<tr>
+    <td>${esc(b.bettor_name)}</td>
+    <td><span class="badge badge-${b.type === 'win' ? 'open' : 'setup'}">${b.type.toUpperCase()}</span></td>
+    <td>${esc(pMap[b.player_id] ? pMap[b.player_id].name : '?')}</td>
+    <td>${fmt(b.amount)}</td>
+    <td>${new Date(b.timestamp).toLocaleString()}</td>
+  </tr>`).join('');
+
+  const canOpen = t.status === 'setup' || t.status === 'closed';
+  const canClose = t.status === 'open';
+
+  el.innerHTML = `
+    <div class="card">
+      <h2>Betting Status</h2>
+      <p style="margin-bottom:12px;">Current status: <span class="badge badge-${t.status}">${t.status.toUpperCase()}</span></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        ${canOpen ? `<button class="btn btn-primary" onclick="setStatus('open')">Open Betting</button>` : ''}
+        ${canClose ? `<button class="btn btn-secondary" onclick="setStatus('closed')">Close Betting</button>` : ''}
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="val">${bets.length}</div><div class="lbl">Total Bets</div></div>
+      <div class="stat-box"><div class="val">${fmt(state.winPool)}</div><div class="lbl">Win Pool</div></div>
+      <div class="stat-box"><div class="val">${fmt(state.showPool)}</div><div class="lbl">Show Pool</div></div>
+      <div class="stat-box"><div class="val">${fmt((state.winPool||0)+(state.showPool||0))}</div><div class="lbl">Total Wagered</div></div>
+    </div>
+    <div class="card">
+      <h2>Bet History</h2>
+      ${bets.length === 0 ? '<div class="no-data">No bets placed yet.</div>' : `
+      <table>
+        <thead><tr><th>Bettor</th><th>Type</th><th>Player</th><th>Amount</th><th>Time</th></tr></thead>
+        <tbody>${betRows}</tbody>
+      </table>`}
+    </div>
+    <div class="card" style="border-color:#ffcdd2">
+      <h2 style="color:var(--danger)">Danger Zone</h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">Reset all bets, scores, and results for this tournament. Sets status back to open.</p>
+      <button class="btn btn-danger" onclick="resetTournament()">Reset Tournament Data</button>
+    </div>`;
+}
+
+async function setStatus(status) {
+  try { await api('POST', '/api/admin/status', { status }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+async function resetTournament() {
+  if (!confirm('This will delete ALL bets, scores, results, holes, and PvP data for this tournament. Are you sure?')) return;
+  if (!confirm('FINAL CONFIRMATION: This cannot be undone.')) return;
+  try { await api('POST', '/api/admin/reset'); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── Scores Tab ───────────────────────────────────────────────────────────────
+function renderScores() {
+  const el = document.getElementById('scoresContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+  const players = state.players || [];
+  const standings = state.standings || [];
+
+  // Build score inputs for each round
+  const rounds = [];
+  for (let r = 1; r <= t.rounds; r++) {
+    const inputs = players.map(p => {
+      // Find existing score from standings
+      let gross = '';
+      const s = standings.find(x => x.player && x.player.id === p.id);
+      if (s) {
+        const rn = s.roundNets.find(x => x.round === r);
+        if (rn && rn.gross != null) gross = rn.gross;
       }
-      fetchState();
-    } catch (e) {
-      msgEl.innerHTML = '<div class="msg-error">Network error.</div>';
-    }
-  }
-
-  async function clearRound(round) {
-    if (!confirm(`Clear all Round ${round} scores?`)) return;
-    const msgEl = document.getElementById('scores-msg');
-    try {
-      const res = await fetch('/api/admin/scores/clear', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ round }),
-      });
-      if ((await res.json()).success) {
-        msgEl.innerHTML = `<div class="msg-success">Round ${round} scores cleared.</div>`;
-        // clear inputs
-        if (appState) {
-          appState.entrants.forEach(e => {
-            const el = document.getElementById(`score-r${round}-${e.name}`);
-            if (el) el.value = '';
-          });
-        }
-        fetchState();
-      }
-    } catch (e) {
-      msgEl.innerHTML = '<div class="msg-error">Network error.</div>';
-    }
-  }
-
-  function renderStandings(standings) {
-    const anyScore = standings.some(r => r.totalNet !== null);
-    document.getElementById('standings-empty').style.display = anyScore ? 'none' : 'block';
-    const table = document.getElementById('standings-table');
-    table.style.display = anyScore ? 'table' : 'none';
-    if (!anyScore) return;
-
-    document.getElementById('standings-tbody').innerHTML = standings.map(row => {
-      const pos     = row.pos !== null ? (row.pos === 1 ? '1' : row.pos) : '—';
-      const r1Cell  = row.r1Net !== null ? `${row.r1Net} <span style="font-size:0.72rem;color:#999">(${row.r1Gross})</span>` : '<span style="color:#ccc">—</span>';
-      const r2Cell  = row.r2Net !== null ? `${row.r2Net} <span style="font-size:0.72rem;color:#999">(${row.r2Gross})</span>` : '<span style="color:#ccc">—</span>';
-      const totCell = row.totalNet !== null ? `<strong>${row.totalNet}</strong>` : '<span style="color:#ccc">—</span>';
-      const rowStyle = row.totalNet === null ? 'color:#bbb' : '';
-      return `<tr style="${rowStyle}">
-        <td style="font-weight:700;color:${row.pos===1?'#1a5c1a':'#555'}">${pos}</td>
-        <td>${row.name}</td>
-        <td style="text-align:right">${r1Cell}</td>
-        <td style="text-align:right">${r2Cell}</td>
-        <td style="text-align:right">${totCell}</td>
+      return `<tr>
+        <td>${esc(p.name)}</td>
+        <td><input type="number" class="score-input" id="score_r${r}_p${p.id}" value="${gross}" style="width:70px;text-align:center;" placeholder="—"></td>
       </tr>`;
     }).join('');
+    rounds.push(`
+      <div class="card">
+        <h2>Round ${r}</h2>
+        <table>
+          <thead><tr><th>Player</th><th>Gross Score</th></tr></thead>
+          <tbody>${inputs}</tbody>
+        </table>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveScores(${r})">Save R${r}</button>
+          <button class="btn btn-outline" onclick="clearScores(${r})">Clear R${r}</button>
+        </div>
+      </div>`);
   }
 
-  // Patch renderState to also handle scores/standings
-  const _origRenderState = renderState;
-  renderState = function(s) {
-    _origRenderState(s);
-    if (s.entrants) {
-      buildScoreInputs(s.entrants);
-      populateScoreInputs(s.entrants, s.scores || { r1: {}, r2: {} });
-    }
-    if (s.standings) renderStandings(s.standings);
-  };
+  // Standings table
+  const standRows = standings.map(s => {
+    if (!s.hasScores) return `<tr style="opacity:0.5"><td>${esc(s.player.name)}</td><td colspan="${t.rounds + 2}">No scores</td></tr>`;
+    const netCols = s.roundNets.map(rn => `<td>${rn.net != null ? rn.net : '—'}</td>`).join('');
+    return `<tr>
+      <td>${s.position != null ? s.position : '—'}</td>
+      <td>${esc(s.player.name)} <small style="color:var(--muted)">(${s.effHcp})</small></td>
+      ${netCols}
+      <td><strong>${s.totalNet != null ? s.totalNet : '—'}</strong></td>
+    </tr>`;
+  }).join('');
 
-  fetchState();
-  setInterval(fetchState, 10000);
+  const netHeaders = Array.from({length: t.rounds}, (_, i) => `<th>R${i+1} Net</th>`).join('');
+
+  el.innerHTML = `
+    <div class="scores-grid">${rounds.join('')}</div>
+    <div class="card">
+      <h2>Net Standings</h2>
+      ${standings.length === 0 ? '<div class="no-data">No players.</div>' : `
+      <table>
+        <thead><tr><th>#</th><th>Player (Eff.HCP)</th>${netHeaders}<th>Total Net</th></tr></thead>
+        <tbody>${standRows}</tbody>
+      </table>`}
+    </div>`;
+}
+
+async function saveScores(round) {
+  const t = state.tournament;
+  const players = state.players || [];
+  const scores = {};
+  for (const p of players) {
+    const input = document.getElementById(`score_r${round}_p${p.id}`);
+    if (input && input.value !== '') scores[p.id] = parseInt(input.value);
+  }
+  try { await api('POST', '/api/admin/scores', { round, scores }); await loadState(); alert(`Round ${round} scores saved.`); }
+  catch(e) { alert(e.message); }
+}
+
+async function clearScores(round) {
+  if (!confirm(`Clear all Round ${round} scores?`)) return;
+  try { await api('POST', '/api/admin/scores/clear', { round }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── Results Tab ──────────────────────────────────────────────────────────────
+function renderResults() {
+  const el = document.getElementById('resultsContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+  const players = state.players || [];
+  const results = state.results;
+
+  const options = players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+
+  let currentResults = '';
+  if (results) {
+    const pMap = {};
+    for (const p of players) pMap[p.id] = p;
+    currentResults = `
+      <div class="msg msg-success" style="margin-bottom:12px;">
+        Results submitted: 1st — ${pMap[results.first_player_id] ? esc(pMap[results.first_player_id].name) : '?'},
+        2nd — ${pMap[results.second_player_id] ? esc(pMap[results.second_player_id].name) : '?'},
+        3rd — ${pMap[results.third_player_id] ? esc(pMap[results.third_player_id].name) : '?'}
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <h2>Submit Results</h2>
+      ${currentResults}
+      <div class="form-row">
+        <div class="form-group"><label>1st Place</label><select id="r1st"><option value="">— Select —</option>${options}</select></div>
+        <div class="form-group"><label>2nd Place</label><select id="r2nd"><option value="">— Select —</option>${options}</select></div>
+        <div class="form-group"><label>3rd Place</label><select id="r3rd"><option value="">— Select —</option>${options}</select></div>
+      </div>
+      ${results ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Pre-filled with existing results.</p>` : ''}
+      <button class="btn btn-secondary" onclick="submitResults()">Submit Results & Finalize</button>
+    </div>`;
+
+  if (results) {
+    document.getElementById('r1st').value = results.first_player_id || '';
+    document.getElementById('r2nd').value = results.second_player_id || '';
+    document.getElementById('r3rd').value = results.third_player_id || '';
+  }
+}
+
+async function submitResults() {
+  const first = document.getElementById('r1st').value;
+  const second = document.getElementById('r2nd').value;
+  const third = document.getElementById('r3rd').value;
+  if (!first) { alert('1st place is required.'); return; }
+  if (!confirm('Submit results and set tournament to FINAL? This will calculate all payouts.')) return;
+  try { await api('POST', '/api/results', { first, second, third }); await loadState(); alert('Results submitted!'); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── Holes Tab ────────────────────────────────────────────────────────────────
+function renderHoles() {
+  const el = document.getElementById('holesContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+
+  const holes = state.holes || [];
+  const players = state.players || [];
+  const pMap = {};
+  for (const p of players) pMap[p.id] = p;
+
+  let html = '';
+  for (let round = 1; round <= t.rounds; round++) {
+    const roundHoles = holes.filter(h => h.round === round);
+    const cards = roundHoles.map(h => {
+      const statusBadge = `<span class="badge badge-${h.status === 'open' ? 'open' : h.status === 'final' ? 'final' : 'locked'}">${h.status.toUpperCase()}</span>`;
+      let actions = '';
+      let extra = '';
+
+      if (h.status === 'locked') {
+        actions = `<button class="btn btn-primary btn-sm" onclick="unlockHole(${round},${h.hole})">Open</button>`;
+      } else if (h.status === 'open') {
+        actions = `
+          <button class="btn btn-outline btn-sm" onclick="lockHole(${round},${h.hole})">Lock</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleHoleResult(${round},${h.hole})">Set Result</button>`;
+        extra = `<div id="holeResultForm_${round}_${h.hole}" style="display:none" class="inline-form">
+          ${players.map(p => `<label><input type="radio" name="hr_${round}_${h.hole}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn btn-primary btn-sm" onclick="setHoleResult(${round},${h.hole},false)">Confirm Winner</button>
+            <button class="btn btn-outline btn-sm" onclick="setHoleResult(${round},${h.hole},true)">Push</button>
+          </div>
+        </div>`;
+      } else if (h.status === 'final') {
+        const winner = h.is_push ? 'PUSH' : (pMap[h.winner_player_id] ? pMap[h.winner_player_id].name : '?');
+        extra = `<div style="font-size:0.8rem;margin-top:6px;">Winner: <strong>${esc(winner)}</strong></div>`;
+        actions = `<button class="btn btn-outline btn-sm" onclick="unlockHole(${round},${h.hole})">Reset</button>`;
+      }
+
+      const poolParts = Object.entries(h.playerPools || {}).map(([pid, amt]) => `${pMap[pid] ? esc(pMap[pid].name) : '?'}: ${fmt(amt)}`).join(', ');
+
+      return `<div class="hole-card">
+        <h4>Hole ${h.hole} ${statusBadge}</h4>
+        <div class="pool">${fmt(h.pool || 0)}${poolParts ? ' — ' + poolParts : ''}</div>
+        <div class="hole-actions">${actions}</div>
+        ${extra}
+      </div>`;
+    }).join('');
+
+    html += `<div class="round-section">
+      <h3>Round ${round}</h3>
+      <div class="hole-grid">${cards}</div>
+    </div>`;
+  }
+
+  el.innerHTML = html || '<div class="no-data">No hole data.</div>';
+}
+
+function toggleHoleResult(round, hole) {
+  const el = document.getElementById(`holeResultForm_${round}_${hole}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function unlockHole(round, hole) {
+  try { await api('POST', '/api/admin/holes/unlock', { round, hole }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+async function lockHole(round, hole) {
+  try { await api('POST', '/api/admin/holes/lock', { round, hole }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+async function setHoleResult(round, hole, isPush) {
+  let winner_player_id = null;
+  if (!isPush) {
+    const radios = document.querySelectorAll(`input[name="hr_${round}_${hole}"]`);
+    for (const r of radios) { if (r.checked) { winner_player_id = r.value; break; } }
+    if (!winner_player_id) { alert('Select a winner or choose Push.'); return; }
+  }
+  try { await api('POST', '/api/admin/holes/result', { round, hole, winner_player_id, is_push: isPush }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── PvP Tab ──────────────────────────────────────────────────────────────────
+function renderPvp() {
+  const el = document.getElementById('pvpContent');
+  const t = state && state.tournament;
+  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
+
+  const matchups = state.matchups || [];
+  const players = state.players || [];
+  const pMap = {};
+  for (const p of players) pMap[p.id] = p;
+
+  const cards = matchups.map(m => {
+    const p1 = m.player1 || pMap[m.player1_id] || { name: '?' };
+    const p2 = m.player2 || pMap[m.player2_id] || { name: '?' };
+    const statusBadge = `<span class="badge badge-${m.status === 'open' ? 'open' : m.status === 'final' ? 'final' : 'closed'}">${m.status.toUpperCase()}</span>`;
+
+    let actions = '';
+    let extra = '';
+    if (m.status === 'open') {
+      actions = `
+        <button class="btn btn-secondary btn-sm" onclick="closePvp(${m.id})">Close Betting</button>
+        <button class="btn btn-primary btn-sm" onclick="togglePvpResult(${m.id})">Set Winner</button>`;
+      extra = `<div id="pvpResultForm_${m.id}" style="display:none" class="inline-form">
+        ${[p1, p2].map(p => `<label><input type="radio" name="pvpr_${m.id}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="setPvpResult(${m.id},false)">Confirm Winner</button>
+          <button class="btn btn-outline btn-sm" onclick="setPvpResult(${m.id},true)">Push</button>
+        </div>
+      </div>`;
+    } else if (m.status === 'closed') {
+      actions = `<button class="btn btn-primary btn-sm" onclick="togglePvpResult(${m.id})">Set Winner</button>`;
+      extra = `<div id="pvpResultForm_${m.id}" style="display:none" class="inline-form">
+        ${[p1, p2].map(p => `<label><input type="radio" name="pvpr_${m.id}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="setPvpResult(${m.id},false)">Confirm Winner</button>
+          <button class="btn btn-outline btn-sm" onclick="setPvpResult(${m.id},true)">Push</button>
+        </div>
+      </div>`;
+    } else if (m.status === 'final') {
+      const winner = m.is_push ? 'PUSH' : (pMap[m.winner_player_id] ? pMap[m.winner_player_id].name : '?');
+      extra = `<div style="font-size:0.85rem;margin-top:8px;padding:8px;background:var(--green-light);border-radius:6px;">
+        Result: <strong>${esc(winner)}</strong> &mdash;
+        ${(m.payouts||[]).filter(x => x.payout > 0 || x.refund > 0).map(x => `${esc(x.bet.bettor_name)}: ${fmt(x.payout || x.refund)}`).join(', ')}
+      </div>`;
+    }
+
+    return `<div class="pvp-card">
+      <div class="pvp-header">
+        <div class="players">${esc(p1.name)} vs ${esc(p2.name)}</div>
+        ${statusBadge}
+      </div>
+      <div class="pools">${m.scoring_type.toUpperCase()} | ${esc(p1.name)}: ${fmt(m.p1Pool)} | ${esc(p2.name)}: ${fmt(m.p2Pool)} | Total: ${fmt(m.totalPool)}</div>
+      ${m.use_custom_stakes ? `<div style="font-size:0.8rem;color:var(--amber);margin-bottom:6px;">Min bet: ${fmt(m.min_bet)}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</div>
+      ${extra}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = cards || '<div class="no-data">No matchups in this tournament.</div>';
+}
+
+function togglePvpResult(id) {
+  const el = document.getElementById(`pvpResultForm_${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function closePvp(id) {
+  try { await api('POST', `/api/admin/pvp/${id}/close`); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+async function setPvpResult(id, isPush) {
+  let winner_player_id = null;
+  if (!isPush) {
+    const radios = document.querySelectorAll(`input[name="pvpr_${id}"]`);
+    for (const r of radios) { if (r.checked) { winner_player_id = r.value; break; } }
+    if (!winner_player_id) { alert('Select a winner or choose Push.'); return; }
+  }
+  try { await api('POST', `/api/admin/pvp/${id}/result`, { winner_player_id, is_push: isPush }); await loadState(); }
+  catch(e) { alert(e.message); }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+loadState();
+setInterval(loadState, 10000);
 </script>
 </body>
 </html>
