@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Golf Betting — Admin</title>
+  <script src="config.js"></script>
   <style>
     :root {
       --green-dark: #1a5c1a;
@@ -121,6 +122,44 @@
 let state = null;
 let activeTab = 'tournament';
 
+// ─── Admin PIN ────────────────────────────────────────────────────────────────
+const PIN_KEY = 'golfAdminPin';
+function getPin() { return sessionStorage.getItem(PIN_KEY) || ''; }
+
+function showPinOverlay() {
+  if (document.getElementById('pinOverlay')) return;
+  document.body.insertAdjacentHTML('afterbegin', `
+    <div id="pinOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:8px;padding:24px;max-width:300px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+        <h2 style="font-size:1rem;font-weight:700;color:#1a5c1a;margin-bottom:16px;">Admin PIN</h2>
+        <div id="pinMsg"></div>
+        <input id="pinInput" type="password" style="width:100%;border:1px solid #c8d8c8;border-radius:6px;padding:9px 12px;font-size:1rem;margin-bottom:12px;" placeholder="Enter PIN" onkeydown="if(event.key==='Enter')submitPin()">
+        <button onclick="submitPin()" style="width:100%;padding:10px;background:#2e7d2e;color:white;border:none;border-radius:6px;font-size:0.9rem;font-weight:500;cursor:pointer;">Enter</button>
+      </div>
+    </div>`);
+  setTimeout(() => { const el = document.getElementById('pinInput'); if (el) el.focus(); }, 50);
+}
+
+async function submitPin() {
+  const pin = document.getElementById('pinInput').value;
+  try {
+    const r = await fetch((window.API_BASE || '') + '/api/admin/tournaments', {
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Pin': pin }
+    });
+    if (r.status === 401) {
+      document.getElementById('pinMsg').innerHTML = `<div style="padding:7px 10px;border-radius:6px;background:#ffebee;color:#b71c1c;font-size:0.85rem;margin-bottom:10px;">Incorrect PIN</div>`;
+      return;
+    }
+    sessionStorage.setItem(PIN_KEY, pin);
+    document.getElementById('pinOverlay').remove();
+    loadState();
+  } catch(e) {
+    sessionStorage.setItem(PIN_KEY, pin);
+    document.getElementById('pinOverlay').remove();
+    loadState();
+  }
+}
+
 function switchTab(name) {
   activeTab = name;
   document.querySelectorAll('nav button').forEach((b, i) => {
@@ -136,10 +175,13 @@ function fmt(n) { return '$' + Number(n).toFixed(2); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 async function api(method, url, body) {
+  const pin = getPin();
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (pin) opts.headers['X-Admin-Pin'] = pin;
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(url, opts);
+  const r = await fetch((window.API_BASE || '') + url, opts);
   const data = await r.json();
+  if (r.status === 401) { sessionStorage.removeItem(PIN_KEY); showPinOverlay(); throw new Error('PIN required'); }
   if (!r.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
@@ -686,7 +728,11 @@ async function setPvpResult(id, isPush) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-loadState();
+if (getPin()) {
+  loadState();
+} else {
+  showPinOverlay();
+}
 setInterval(loadState, 10000);
 </script>
 </body>

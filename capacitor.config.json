@@ -1,0 +1,15 @@
+{
+  "appId": "com.sherpacollab.golfbetting",
+  "appName": "Golf Betting",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#1a5c1a",
+      "showSpinner": false
+    }
+  }
+}

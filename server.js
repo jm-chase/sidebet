@@ -1,9 +1,11 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const db = require('./db');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -368,6 +370,17 @@ function enrichMatchups(tournamentId) {
   });
 }
 
+// ─── Admin Auth ──────────────────────────────────────────────────────────────
+
+function requireAdminPin(req, res, next) {
+  const pin = process.env.ADMIN_PIN;
+  if (!pin) return next();
+  if (req.headers['x-admin-pin'] !== pin) return res.status(401).json({ error: 'Invalid admin PIN' });
+  next();
+}
+
+app.use('/api/admin', requireAdminPin);
+
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
 // GET /api/state
@@ -484,7 +497,7 @@ app.post('/api/admin/scores/clear', (req, res) => {
 });
 
 // POST /api/results
-app.post('/api/results', (req, res) => {
+app.post('/api/results', requireAdminPin, (req, res) => {
   const t = getActiveTournament();
   if (!t) return res.status(404).json({ error: 'No tournament' });
   const { first, second, third } = req.body;
