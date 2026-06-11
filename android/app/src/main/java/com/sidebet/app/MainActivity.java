@@ -1,4 +1,4 @@
-package com.sherpacollab.golfbetting;
+package com.sidebet.app;
 
 import com.getcapacitor.BridgeActivity;
 

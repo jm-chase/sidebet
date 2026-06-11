@@ -89,4 +89,4 @@ The current launcher icons are still the Capacitor placeholders. Generate real o
 - [ ] **Content rating / gambling**: SideBet is for entertainment with no real-money wagering or payouts. Declare it as *simulated gambling* in the IARC questionnaire (Play) and set the appropriate age rating (App Store). Do **not** describe it as real-money gambling, or it triggers a far stricter review.
 
 ### Bundle identifier
-Currently `com.sherpacollab.golfbetting` (inherited). If you want it to read `com.sherpacollab.sidebet` in the stores, regenerate the native projects with the new ID **before** first submission — it can't change after release. Say the word and I'll do the rename.
+The app's bundle ID is `com.sidebet.app` (Android `applicationId` + namespace and iOS `PRODUCT_BUNDLE_IDENTIFIER`). This is permanent once published — change it before first submission if you want a different reverse-domain (e.g. one matching a domain you own).
