@@ -1,7 +1,7 @@
 {
-  "name": "golf-betting",
-  "version": "2.0.0",
-  "description": "Pari-mutuel betting app for golf tournament",
+  "name": "sidebet",
+  "version": "3.0.0",
+  "description": "SideBet — customizable pari-mutuel pools for any event: races, tournaments, cook-offs, anything",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

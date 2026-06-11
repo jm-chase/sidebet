@@ -5,116 +5,89 @@ const fs = require('fs');
 const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, 'golf.db'));
+const db = new Database(path.join(dataDir, 'sidebet.db'));
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
-  CREATE TABLE IF NOT EXISTS tournaments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    course TEXT NOT NULL,
-    date TEXT NOT NULL,
-    rounds INTEGER NOT NULL DEFAULT 2,
-    hcp_allowance INTEGER NOT NULL DEFAULT 100,
-    status TEXT NOT NULL DEFAULT 'setup',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  -- An Event is anything people bet on: a race, a tournament, a cook-off.
+  CREATE TABLE IF NOT EXISTS events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    name         TEXT    NOT NULL,
+    venue        TEXT    NOT NULL DEFAULT '',
+    date         TEXT    NOT NULL DEFAULT '',
+    emoji        TEXT    NOT NULL DEFAULT '🎲',
+    accent       TEXT    NOT NULL DEFAULT 'emerald',
+    currency     TEXT    NOT NULL DEFAULT '$',
+    rake_pct     REAL    NOT NULL DEFAULT 0,
+    min_bet      REAL    NOT NULL DEFAULT 1,
+    template     TEXT    NOT NULL DEFAULT 'custom',
+    status       TEXT    NOT NULL DEFAULT 'setup',  -- setup | open | closed | settled
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 
-  CREATE TABLE IF NOT EXISTS players (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tournament_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    handicap_index REAL NOT NULL DEFAULT 0,
-    course_handicap INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+  -- Contestants are the things you back: dogs, golfers, chili entries, teams.
+  CREATE TABLE IF NOT EXISTS contestants (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id     INTEGER NOT NULL,
+    name         TEXT    NOT NULL,
+    emoji        TEXT    NOT NULL DEFAULT '',
+    subtitle     TEXT    NOT NULL DEFAULT '',
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (event_id) REFERENCES events(id)
+  );
+
+  -- A Market is a single pari-mutuel pool with an outcome.
+  -- type: 'win' (1 winner), 'topn' (top N share), 'h2h' (head-to-head subset)
+  CREATE TABLE IF NOT EXISTS markets (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id     INTEGER NOT NULL,
+    name         TEXT    NOT NULL,
+    type         TEXT    NOT NULL DEFAULT 'win',
+    top_n        INTEGER NOT NULL DEFAULT 1,
+    status       TEXT    NOT NULL DEFAULT 'open',   -- open | closed | settled
+    is_push      INTEGER NOT NULL DEFAULT 0,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (event_id) REFERENCES events(id)
+  );
+
+  -- Restricts which contestants are eligible in a market (e.g. a single race,
+  -- or the two sides of a head-to-head). If a market has no rows here, every
+  -- contestant in the event is eligible.
+  CREATE TABLE IF NOT EXISTS market_contestants (
+    market_id     INTEGER NOT NULL,
+    contestant_id INTEGER NOT NULL,
+    UNIQUE(market_id, contestant_id),
+    FOREIGN KEY (market_id) REFERENCES markets(id),
+    FOREIGN KEY (contestant_id) REFERENCES contestants(id)
+  );
+
+  -- The finishing order for a settled market. rank 1 = winner.
+  CREATE TABLE IF NOT EXISTS market_results (
+    market_id     INTEGER NOT NULL,
+    contestant_id INTEGER NOT NULL,
+    rank          INTEGER NOT NULL,
+    UNIQUE(market_id, contestant_id),
+    FOREIGN KEY (market_id) REFERENCES markets(id),
+    FOREIGN KEY (contestant_id) REFERENCES contestants(id)
   );
 
   CREATE TABLE IF NOT EXISTS bets (
-    id TEXT PRIMARY KEY,
-    tournament_id INTEGER NOT NULL,
-    bettor_name TEXT NOT NULL,
-    player_id INTEGER NOT NULL,
-    type TEXT NOT NULL,
-    amount REAL NOT NULL,
-    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-    FOREIGN KEY (player_id) REFERENCES players(id)
+    id            TEXT PRIMARY KEY,
+    market_id     INTEGER NOT NULL,
+    bettor_name   TEXT NOT NULL,
+    contestant_id INTEGER NOT NULL,
+    amount        REAL NOT NULL,
+    timestamp     TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (market_id) REFERENCES markets(id),
+    FOREIGN KEY (contestant_id) REFERENCES contestants(id)
   );
 
-  CREATE TABLE IF NOT EXISTS tournament_results (
-    tournament_id INTEGER PRIMARY KEY,
-    first_player_id INTEGER,
-    second_player_id INTEGER,
-    third_player_id INTEGER,
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tournament_id INTEGER NOT NULL,
-    player_id INTEGER NOT NULL,
-    round INTEGER NOT NULL,
-    gross_score INTEGER NOT NULL,
-    UNIQUE(tournament_id, player_id, round),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-    FOREIGN KEY (player_id) REFERENCES players(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS hole_status (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tournament_id INTEGER NOT NULL,
-    round INTEGER NOT NULL,
-    hole INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'locked',
-    winner_player_id INTEGER,
-    is_push INTEGER NOT NULL DEFAULT 0,
-    UNIQUE(tournament_id, round, hole),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS hole_bets (
-    id TEXT PRIMARY KEY,
-    tournament_id INTEGER NOT NULL,
-    round INTEGER NOT NULL,
-    hole INTEGER NOT NULL,
-    bettor_name TEXT NOT NULL,
-    player_id INTEGER NOT NULL,
-    amount REAL NOT NULL,
-    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-    FOREIGN KEY (player_id) REFERENCES players(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS pvp_matchups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tournament_id INTEGER NOT NULL,
-    player1_id INTEGER NOT NULL,
-    player2_id INTEGER NOT NULL,
-    scoring_type TEXT NOT NULL DEFAULT 'net',
-    status TEXT NOT NULL DEFAULT 'open',
-    winner_player_id INTEGER,
-    is_push INTEGER NOT NULL DEFAULT 0,
-    proposed_by TEXT NOT NULL,
-    use_custom_stakes INTEGER NOT NULL DEFAULT 0,
-    min_bet REAL NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-    FOREIGN KEY (player1_id) REFERENCES players(id),
-    FOREIGN KEY (player2_id) REFERENCES players(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS pvp_bets (
-    id TEXT PRIMARY KEY,
-    matchup_id INTEGER NOT NULL,
-    bettor_name TEXT NOT NULL,
-    player_id INTEGER NOT NULL,
-    amount REAL NOT NULL,
-    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (matchup_id) REFERENCES pvp_matchups(id),
-    FOREIGN KEY (player_id) REFERENCES players(id)
-  );
+  CREATE INDEX IF NOT EXISTS idx_contestants_event ON contestants(event_id);
+  CREATE INDEX IF NOT EXISTS idx_markets_event ON markets(event_id);
+  CREATE INDEX IF NOT EXISTS idx_bets_market ON bets(market_id);
 `);
 
 module.exports = db;

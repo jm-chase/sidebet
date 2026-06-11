@@ -1,14 +1,14 @@
 {
   "appId": "com.sherpacollab.golfbetting",
-  "appName": "Golf Betting",
+  "appName": "SideBet",
   "webDir": "public",
   "server": {
     "androidScheme": "https"
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1500,
-      "backgroundColor": "#1a5c1a",
+      "launchShowDuration": 1400,
+      "backgroundColor": "#0b0f14",
       "showSpinner": false
     }
   }

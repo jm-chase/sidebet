@@ -2,850 +2,630 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Golf Betting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f14">
+  <title>SideBet</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
   <script src="config.js"></script>
   <style>
     :root {
-      --green-dark: #1a5c1a;
-      --green-mid: #2e7d2e;
-      --green-light: #e8f5e9;
-      --amber: #f57c00;
-      --bg: #f0f2f0;
-      --white: #ffffff;
-      --text: #1a1a1a;
-      --muted: #666;
-      --border: #c8d8c8;
-      --radius: 8px;
-      --danger: #c62828;
+      --bg: #0b0f14;
+      --surface: #141b23;
+      --surface-2: #1b242e;
+      --surface-3: #232f3b;
+      --border: #28333f;
+      --text: #eef2f6;
+      --muted: #8a97a6;
+      --muted-2: #5f6c7a;
+      --pos: #34d399;
+      --neg: #fb7185;
+      --radius: 16px;
+      --radius-sm: 11px;
+      /* accent — overridden per-event by JS */
+      --accent: #34d399;
+      --accent-ink: #04140d;
+      --accent-glow: rgba(52, 211, 153, 0.35);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-    header { background: var(--green-dark); color: white; padding: 14px 20px; }
-    header h1 { font-size: 1.2rem; font-weight: 700; }
-    header p { font-size: 0.8rem; opacity: 0.75; margin-top: 2px; }
-    nav { background: var(--green-mid); display: flex; overflow-x: auto; scrollbar-width: none; }
-    nav::-webkit-scrollbar { display: none; }
-    nav button { background: none; border: none; color: rgba(255,255,255,0.75); padding: 12px 16px; font-size: 0.875rem; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.15s; }
-    nav button.active { color: white; border-bottom-color: #a5d6a7; }
-    nav button:hover { color: white; background: rgba(255,255,255,0.1); }
-    .tab { display: none; padding: 16px; max-width: 860px; margin: 0 auto; }
-    .tab.active { display: block; }
-    .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; }
-    .card h2 { font-size: 1rem; font-weight: 600; color: var(--green-dark); margin-bottom: 12px; }
-    .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-    .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
-    input, select { border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; font-size: 0.95rem; width: 100%; background: white; }
-    input:focus, select:focus { outline: 2px solid var(--green-mid); border-color: var(--green-mid); }
-    .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.15s; width: 100%; }
-    .btn:hover { opacity: 0.85; }
-    .btn-primary { background: var(--green-mid); color: white; }
-    .btn-secondary { background: var(--amber); color: white; }
-    .btn-outline { background: transparent; border: 1px solid var(--green-mid); color: var(--green-mid); }
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; width: auto; }
-    .btn-row { display: flex; gap: 10px; margin-bottom: 12px; }
-    .btn-row .btn { flex: 1; }
-    .type-btn { flex: 1; padding: 10px; border-radius: 6px; border: 2px solid var(--border); cursor: pointer; text-align: center; font-weight: 600; font-size: 0.9rem; background: white; transition: all 0.15s; }
-    .type-btn.selected-win { border-color: var(--green-mid); background: var(--green-light); color: var(--green-dark); }
-    .type-btn.selected-show { border-color: var(--amber); background: #fff3e0; color: var(--amber); }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-    .badge-setup { background: #e3f2fd; color: #1565c0; }
-    .badge-open { background: #e8f5e9; color: #2e7d32; }
-    .badge-closed { background: #fff3e0; color: #e65100; }
-    .badge-final { background: #fce4ec; color: #ad1457; }
-    .badge-win { background: var(--green-light); color: var(--green-dark); }
-    .badge-show { background: #fff3e0; color: #e65100; }
-    .badge-hole { background: #e3f2fd; color: #1565c0; }
-    .badge-pvp { background: #f3e5f5; color: #6a1b9a; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th { text-align: left; padding: 8px 10px; background: var(--green-light); color: var(--green-dark); font-weight: 600; border-bottom: 1px solid var(--border); }
-    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    .no-data { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
-    .notice { background: #fff3e0; border: 1px solid #ffcc80; border-radius: var(--radius); padding: 14px; margin-bottom: 14px; color: #e65100; font-size: 0.9rem; }
-    .hole-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
-    .hole-card h4 { font-weight: 600; margin-bottom: 6px; color: var(--green-dark); }
-    .hole-card .pool-info { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
-    .hole-result { background: var(--green-light); border-radius: 6px; padding: 8px 12px; font-size: 0.875rem; margin-top: 8px; }
-    .pvp-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
-    .pvp-card h4 { font-weight: 600; color: var(--green-dark); margin-bottom: 6px; }
-    .pvp-card .meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
-    .pool-bar { display: flex; gap: 6px; margin-bottom: 10px; font-size: 0.85rem; }
-    .pool-bar .side { flex: 1; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
-    .pool-bar .side:hover { border-color: var(--green-mid); }
-    .pool-bar .side.selected { border-color: var(--green-mid); background: var(--green-light); }
-    .rank-1 { color: #f9a825; font-weight: 700; }
-    .rank-2 { color: #9e9e9e; font-weight: 600; }
-    .rank-3 { color: #795548; font-weight: 600; }
-    .payout-pos { color: #2e7d32; font-weight: 600; }
-    .payout-neg { color: #c62828; }
-    .standings-row-dim { opacity: 0.45; }
-    .odds-pos { color: var(--green-dark); font-weight: 600; }
-    .odds-neg { color: var(--danger); font-weight: 600; }
-    @media (max-width: 500px) { .btn-row { flex-direction: column; } }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      overscroll-behavior-y: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(900px 500px at 80% -10%, var(--accent-glow), transparent 60%),
+        radial-gradient(700px 500px at -10% 10%, rgba(80,120,255,0.10), transparent 55%);
+      opacity: 0.9;
+    }
+    #app { position: relative; z-index: 1; min-height: 100%; padding-bottom: calc(78px + var(--safe-bottom)); }
+
+    /* ── Header ── */
+    header {
+      padding: calc(12px + var(--safe-top)) 18px 12px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 20;
+      background: linear-gradient(180deg, rgba(11,15,20,0.92), rgba(11,15,20,0.6));
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
+    .logo .mark { width: 30px; height: 30px; flex: none; }
+    .logo .bet { color: var(--accent); }
+    .name-btn {
+      margin-left: auto; display: flex; align-items: center; gap: 7px;
+      background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .name-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+
+    /* ── Event banner ── */
+    .event-banner {
+      margin: 4px 14px 0; padding: 16px; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--border); position: relative; overflow: hidden;
+    }
+    .event-banner .glow { position: absolute; top: -40px; right: -20px; font-size: 7rem; opacity: 0.12; filter: saturate(1.4); }
+    .event-banner h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+    .event-banner .meta { color: var(--muted); font-size: 0.85rem; margin-top: 3px; }
+    .event-banner .stats { display: flex; gap: 22px; margin-top: 14px; }
+    .event-banner .stat .v { font-size: 1.25rem; font-weight: 800; color: var(--accent); }
+    .event-banner .stat .l { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .pill.live { background: var(--accent); color: var(--accent-ink); }
+    .pill.live .ping { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-ink); animation: ping 1.4s infinite; }
+    .pill.closed { background: #3a2a14; color: #f5b860; }
+    .pill.settled { background: #2a1f3d; color: #c39bf5; }
+    .pill.setup { background: var(--surface-3); color: var(--muted); }
+    @keyframes ping { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+    /* ── Content ── */
+    main { padding: 16px 14px 0; max-width: 720px; margin: 0 auto; }
+    .section-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 2px 10px; }
+
+    /* ── Market card ── */
+    .market {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 14px; animation: rise 0.35s ease both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .market-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .market-head .name { font-weight: 700; font-size: 1rem; }
+    .market-head .tag { font-size: 0.68rem; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+    .market-head .pool { margin-left: auto; text-align: right; }
+    .market-head .pool .v { font-weight: 800; color: var(--accent); font-size: 0.95rem; }
+    .market-head .pool .l { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .chip {
+      display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+      background: var(--surface-2); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 11px 13px; margin-bottom: 8px; cursor: pointer; color: var(--text);
+      transition: border-color 0.15s, transform 0.08s, background 0.15s;
+    }
+    .chip:last-child { margin-bottom: 0; }
+    .chip:active { transform: scale(0.985); }
+    .chip:hover { border-color: var(--accent); }
+    .chip .ava { width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .chip .who { min-width: 0; flex: 1; }
+    .chip .who .n { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip .who .s { font-size: 0.74rem; color: var(--muted); }
+    .chip .right { text-align: right; flex: none; }
+    .chip .odds { font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; }
+    .chip .odds.pos { color: var(--accent); }
+    .chip .share { font-size: 0.68rem; color: var(--muted); }
+    .chip .barwrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .chip .bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+    .chip.win { border-color: var(--accent); background: linear-gradient(180deg, var(--surface-3), var(--surface-2)); }
+    .chip.lose { opacity: 0.5; }
+
+    .market.settled .market-head .name::after { content: ' · FINAL'; color: var(--muted); font-weight: 600; font-size: 0.72rem; }
+
+    /* ── Empty / loading ── */
+    .empty { text-align: center; padding: 70px 24px; }
+    .empty .e { font-size: 3.4rem; margin-bottom: 14px; }
+    .empty h2 { font-size: 1.15rem; margin-bottom: 6px; }
+    .empty p { color: var(--muted); font-size: 0.9rem; line-height: 1.5; max-width: 320px; margin: 0 auto; }
+
+    /* ── My bets / results rows ── */
+    .row {
+      display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 9px;
+    }
+    .row .ava { width: 36px; height: 36px; flex: none; border-radius: 10px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+    .row .mid { flex: 1; min-width: 0; }
+    .row .mid .t { font-weight: 700; font-size: 0.92rem; }
+    .row .mid .sub { font-size: 0.76rem; color: var(--muted); margin-top: 1px; }
+    .row .amt { text-align: right; font-variant-numeric: tabular-nums; }
+    .row .amt .big { font-weight: 800; font-size: 0.95rem; }
+    .row .amt .lab { font-size: 0.66rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .pos { color: var(--pos) !important; }
+    .neg { color: var(--neg) !important; }
+    .status-tag { font-size: 0.66rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .status-tag.open { background: rgba(52,211,153,0.14); color: var(--pos); }
+    .status-tag.settled { background: var(--surface-3); color: var(--muted); }
+
+    .summary-card { background: linear-gradient(135deg, var(--surface-2), var(--surface)); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: flex; gap: 8px; }
+    .summary-card .box { flex: 1; text-align: center; }
+    .summary-card .box .v { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .summary-card .box .l { font-size: 0.66rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* ── Bottom nav ── */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+      display: flex; padding: 8px 10px calc(8px + var(--safe-bottom));
+      background: rgba(13,18,24,0.86); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-top: 1px solid var(--border);
+    }
+    nav button {
+      flex: 1; background: none; border: none; color: var(--muted-2); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; font-size: 0.66rem; font-weight: 600;
+      transition: color 0.15s;
+    }
+    nav button svg { width: 22px; height: 22px; }
+    nav button.active { color: var(--accent); }
+    nav button .badge { position: absolute; transform: translate(14px, -4px); background: var(--accent); color: var(--accent-ink); font-size: 0.6rem; font-weight: 800; min-width: 15px; height: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+    /* ── Bottom sheet (bet slip + name) ── */
+    .sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
+      background: var(--surface); border-top-left-radius: 24px; border-top-right-radius: 24px;
+      border-top: 1px solid var(--border); padding: 10px 20px calc(22px + var(--safe-bottom));
+      transform: translateY(110%); transition: transform 0.32s cubic-bezier(0.22,1,0.36,1);
+      max-width: 720px; margin: 0 auto;
+    }
+    .sheet.show { transform: none; }
+    .sheet .grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 4px auto 16px; }
+    .sheet h3 { font-size: 1.05rem; margin-bottom: 4px; }
+    .sheet .sub { color: var(--muted); font-size: 0.84rem; margin-bottom: 16px; }
+    .pick-preview { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; }
+    .pick-preview .ava { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .pick-preview .n { font-weight: 700; }
+    .pick-preview .m { font-size: 0.76rem; color: var(--muted); }
+    .stepper { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .stepper button { width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 1.5rem; font-weight: 700; cursor: pointer; }
+    .stepper button:active { background: var(--surface-3); }
+    .stepper .field { flex: 1; text-align: center; }
+    .stepper .field .cur { font-size: 0.85rem; color: var(--muted); }
+    .stepper .field input { width: 100%; background: none; border: none; color: var(--text); font-size: 2rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+    .stepper .field input:focus { outline: none; }
+    .quick { display: flex; gap: 8px; margin-bottom: 18px; }
+    .quick button { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+    .quick button:active { border-color: var(--accent); }
+    .btn-primary {
+      width: 100%; padding: 15px; border-radius: 14px; border: none; cursor: pointer;
+      background: var(--accent); color: var(--accent-ink); font-size: 1rem; font-weight: 800;
+      box-shadow: 0 8px 24px -6px var(--accent-glow); transition: transform 0.08s;
+    }
+    .btn-primary:active { transform: scale(0.985); }
+    .btn-primary:disabled { opacity: 0.5; box-shadow: none; }
+    .sheet input.text { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; color: var(--text); font-size: 1rem; margin-bottom: 16px; }
+    .sheet input.text:focus { outline: none; border-color: var(--accent); }
+    .fine { font-size: 0.72rem; color: var(--muted-2); text-align: center; margin-top: 12px; line-height: 1.45; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; left: 50%; bottom: calc(96px + var(--safe-bottom)); transform: translateX(-50%) translateY(20px); z-index: 60;
+      background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 12px 20px; border-radius: 999px;
+      box-shadow: 0 10px 30px -6px var(--accent-glow); opacity: 0; pointer-events: none; transition: all 0.3s; font-size: 0.9rem; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.err { background: var(--neg); color: #2a0a10; box-shadow: none; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-<header>
-  <h1>Golf Betting</h1>
-  <p id="headerSub">Loading...</p>
-</header>
-<nav>
-  <button class="active" onclick="switchTab('bet')">Bet</button>
-  <button onclick="switchTab('holes')">Holes</button>
-  <button onclick="switchTab('pvp')">PvP</button>
-  <button onclick="switchTab('standings')">Standings</button>
-  <button onclick="switchTab('history')">History</button>
-  <button onclick="switchTab('odds')">Odds</button>
-  <button onclick="switchTab('stats')">Stats</button>
-  <button id="payoutsTab" style="display:none" onclick="switchTab('payouts')">Payouts</button>
+<div id="app">
+  <header>
+    <div class="logo">
+      <svg class="mark" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="9" fill="var(--accent)"/>
+        <path d="M10.5 21.5L21.5 10.5M12.5 11.2h.01M19.5 20.8h.01" stroke="var(--accent-ink)" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="12.4" cy="11.4" r="2.1" fill="var(--accent-ink)"/>
+        <circle cx="19.6" cy="20.6" r="2.1" fill="var(--accent-ink)"/>
+      </svg>
+      <span>Side<span class="bet">Bet</span></span>
+    </div>
+    <button class="name-btn" onclick="openNameSheet()"><span class="dot"></span><span id="nameLabel">Set name</span></button>
+  </header>
+
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+
+<nav id="nav">
+  <button data-tab="pools" class="active" onclick="switchTab('pools')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Pools
+  </button>
+  <button data-tab="mybets" onclick="switchTab('mybets')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10" stroke-linecap="round"/></svg>
+    My Bets
+  </button>
+  <button data-tab="results" onclick="switchTab('results')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M6 4h12v5a6 6 0 01-12 0V4zM6 6H3v2a3 3 0 003 3M18 6h3v2a3 3 0 01-3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Results
+  </button>
+  <button data-tab="board" onclick="switchTab('board')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V9M12 21V4M19 21v-7" stroke-linecap="round"/></svg>
+    Board
+  </button>
 </nav>
 
-<div id="tab-bet" class="tab active"></div>
-<div id="tab-holes" class="tab"></div>
-<div id="tab-pvp" class="tab"></div>
-<div id="tab-standings" class="tab"></div>
-<div id="tab-history" class="tab"></div>
-<div id="tab-odds" class="tab"></div>
-<div id="tab-stats" class="tab"></div>
-<div id="tab-payouts" class="tab"></div>
+<!-- Bet slip sheet -->
+<div class="sheet-backdrop" id="betBackdrop" onclick="closeBetSheet()"></div>
+<div class="sheet" id="betSheet">
+  <div class="grip"></div>
+  <h3 id="betTitle">Place a bet</h3>
+  <div class="sub" id="betSub"></div>
+  <div class="pick-preview" id="betPick"></div>
+  <div class="stepper">
+    <button onclick="bumpAmount(-step())">−</button>
+    <div class="field"><div class="cur" id="curLabel">amount</div><input id="betAmount" type="number" inputmode="decimal" value="5" onchange="renderBetSheet()"></div>
+    <button onclick="bumpAmount(step())">+</button>
+  </div>
+  <div class="quick" id="quickChips"></div>
+  <button class="btn-primary" id="placeBtn" onclick="submitBet()">Place Bet</button>
+  <div class="fine">Pari-mutuel pool — your final payout depends on the total pool when betting closes. Winners split the pool in proportion to their stake.</div>
+</div>
+
+<!-- Name sheet -->
+<div class="sheet-backdrop" id="nameBackdrop" onclick="closeNameSheet()"></div>
+<div class="sheet" id="nameSheet">
+  <div class="grip"></div>
+  <h3>What's your name?</h3>
+  <div class="sub">So your bets show up under you. Stored on this device only.</div>
+  <input class="text" id="nameInput" placeholder="e.g. Jordan" autocomplete="off">
+  <button class="btn-primary" onclick="saveName()">Save</button>
+</div>
+
+<div id="toast"></div>
 
 <script>
-let state = null;
-let activeTab = 'bet';
-let selectedBetType = 'win';
-let statsData = null;
+// ─── State ──────────────────────────────────────────────────────────────────
+let data = null;            // { event, contestants, markets, poolTotal }
+let activeTab = 'pools';
+let bet = null;             // { market, contestant }
+const NAME_KEY = 'sidebetName';
 
-const BETTOR_KEY = 'golfBettorName';
+const ACCENTS = {
+  emerald: ['#34d399', '#04140d', 'rgba(52,211,153,0.35)'],
+  cyan:    ['#22d3ee', '#04181c', 'rgba(34,211,238,0.35)'],
+  violet:  ['#a78bfa', '#150a26', 'rgba(167,139,250,0.35)'],
+  rose:    ['#fb7185', '#2a0a10', 'rgba(251,113,133,0.35)'],
+  amber:   ['#fbbf24', '#241803', 'rgba(251,191,36,0.32)'],
+  blue:    ['#60a5fa', '#06182e', 'rgba(96,165,250,0.35)'],
+};
 
-function getBettorName() { return localStorage.getItem(BETTOR_KEY) || ''; }
-function saveBettorName(name) { localStorage.setItem(BETTOR_KEY, name); }
-
-function fmt(n) { return '$' + Number(n).toFixed(2); }
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const cur = () => (data && data.event ? data.event.currency : '$');
+function money(n) { return cur() + Number(n).toFixed(2); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getName() { return localStorage.getItem(NAME_KEY) || ''; }
+function setName(n) { localStorage.setItem(NAME_KEY, n); }
+const TYPE_LABEL = { win: 'Winner takes pool', topn: 'Top finishers share', h2h: 'Head to head' };
+
+function applyAccent(key) {
+  const a = ACCENTS[key] || ACCENTS.emerald;
+  const r = document.documentElement.style;
+  r.setProperty('--accent', a[0]);
+  r.setProperty('--accent-ink', a[1]);
+  r.setProperty('--accent-glow', a[2]);
+  const tc = document.querySelector('meta[name=theme-color]');
+  if (tc) tc.setAttribute('content', '#0b0f14');
+}
 
 async function api(method, url, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch((window.API_BASE || '') + url, opts);
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || 'Request failed');
-  return data;
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
 }
 
-function switchTab(name) {
-  activeTab = name;
-  document.querySelectorAll('nav button').forEach(b => {
-    b.classList.toggle('active', b.textContent.toLowerCase() === name || (b.id === 'payoutsTab' && name === 'payouts'));
-  });
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'stats') loadStats();
-  renderTab();
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = isErr ? 'show err' : 'show';
+  clearTimeout(t._t); t._t = setTimeout(() => t.className = '', 2200);
 }
 
-async function loadState() {
+// Map contestant id -> contestant
+function cMap() { const m = {}; for (const c of (data.contestants||[])) m[c.id] = c; return m; }
+function ava(c) { return `<div class="ava">${c && c.emoji ? c.emoji : (c ? esc(c.name[0].toUpperCase()) : '?')}</div>`; }
+
+// ─── Load + render ──────────────────────────────────────────────────────────
+async function load() {
   try {
-    state = await api('GET', '/api/state');
-    renderAll();
-  } catch(e) { console.error(e); }
+    data = await api('GET', '/api/event');
+    if (data.event) applyAccent(data.event.accent);
+    renderBanner();
+    renderTab();
+    updateNav();
+  } catch (e) { console.error(e); }
 }
 
-function renderAll() {
-  const t = state && state.tournament;
-  const sub = document.getElementById('headerSub');
-  const payoutsBtn = document.getElementById('payoutsTab');
-  if (t) {
-    sub.textContent = t.name + ' at ' + t.course + ' — ' + t.date;
-    payoutsBtn.style.display = t.status === 'final' ? '' : 'none';
-  } else {
-    sub.textContent = 'No active tournament';
-    payoutsBtn.style.display = 'none';
-  }
-  renderTab();
-}
-
-function renderTab() {
-  switch(activeTab) {
-    case 'bet': renderBet(); break;
-    case 'holes': renderHoles(); break;
-    case 'pvp': renderPvp(); break;
-    case 'standings': renderStandings(); break;
-    case 'history': renderHistory(); break;
-    case 'odds': renderOdds(); break;
-    case 'stats': renderStats(); break;
-    case 'payouts': renderPayouts(); break;
-  }
-}
-
-// ─── Bet Tab ──────────────────────────────────────────────────────────────────
-function renderBet() {
-  const el = document.getElementById('tab-bet');
-  const t = state && state.tournament;
-
-  if (!t) {
-    el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`;
-    return;
-  }
-
-  const players = state.players || [];
-  const effHcp = p => Math.round(p.course_handicap * t.hcp_allowance / 100);
-
-  if (t.status === 'closed' || t.status === 'final' || t.status === 'setup') {
-    el.innerHTML = `
-      <div class="notice">Betting is currently <strong>${t.status.toUpperCase()}</strong>. No bets can be placed at this time.</div>
-      <div class="card">
-        <h2>${t.name}</h2>
-        <p style="color:var(--muted);font-size:0.875rem;">${t.course} &mdash; ${t.date} &mdash; ${t.rounds} round(s)</p>
-      </div>`;
-    return;
-  }
-
-  const playerOptions = players.map(p => `<option value="${p.id}">${esc(p.name)} (HCP ${effHcp(p)})</option>`).join('');
-  const bettorName = getBettorName();
-
+function renderBanner() {
+  const el = document.getElementById('banner');
+  const ev = data && data.event;
+  if (!ev) { el.innerHTML = ''; return; }
+  const statusPill = {
+    open: '<span class="pill live"><span class="ping"></span>Live betting</span>',
+    closed: '<span class="pill closed">Betting closed</span>',
+    settled: '<span class="pill settled">Settled</span>',
+    setup: '<span class="pill setup">Starting soon</span>',
+  }[ev.status] || '';
+  const meta = [ev.venue, ev.date].filter(Boolean).map(esc).join(' · ');
   el.innerHTML = `
-    <div class="card">
-      <h2>Place a Bet</h2>
-      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">Status: <span class="badge badge-open">OPEN</span></p>
-      <div id="betMsg"></div>
-      <div class="form-group">
-        <label>Your Name</label>
-        <input id="bettor" value="${esc(bettorName)}" placeholder="Enter your name" oninput="saveBettorName(this.value)">
+    <div class="event-banner">
+      <div class="glow">${ev.emoji || '🎲'}</div>
+      <div style="margin-bottom:8px">${statusPill}</div>
+      <h1>${ev.emoji || ''} ${esc(ev.name)}</h1>
+      ${meta ? `<div class="meta">${meta}</div>` : ''}
+      <div class="stats">
+        <div class="stat"><div class="v">${money(data.poolTotal)}</div><div class="l">In the pools</div></div>
+        <div class="stat"><div class="v">${(data.markets||[]).length}</div><div class="l">Pools</div></div>
+        <div class="stat"><div class="v">${(data.contestants||[]).length}</div><div class="l">Contestants</div></div>
       </div>
-      <div class="form-group">
-        <label>Golfer</label>
-        <select id="betPlayer">${playerOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>Bet Type</label>
-        <div class="btn-row" style="margin-bottom:0">
-          <button class="type-btn ${selectedBetType === 'win' ? 'selected-win' : ''}" id="btnWin" onclick="selectBetType('win')">WIN</button>
-          <button class="type-btn ${selectedBetType === 'show' ? 'selected-show' : ''}" id="btnShow" onclick="selectBetType('show')">SHOW</button>
-        </div>
-        <p style="font-size:0.75rem;color:var(--muted);margin-top:6px;">${selectedBetType === 'win' ? 'WIN: Your player must finish 1st.' : 'SHOW: Your player must finish top 3.'}</p>
-      </div>
-      <div class="form-group">
-        <label>Amount ($)</label>
-        <input id="betAmount" type="number" min="1" value="5" step="1">
-      </div>
-      <button class="btn btn-primary" onclick="placeBet()">Place Bet</button>
     </div>`;
 }
 
-function selectBetType(type) {
-  selectedBetType = type;
-  renderBet();
+function switchTab(t) { activeTab = t; updateNav(); renderTab(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function updateNav() {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+}
+function renderTab() {
+  if (!data || !data.event) return renderNoEvent();
+  ({ pools: renderPools, mybets: renderMyBets, results: renderResults, board: renderBoard }[activeTab] || renderPools)();
 }
 
-async function placeBet() {
-  const bettor = document.getElementById('bettor').value.trim();
-  const player_id = document.getElementById('betPlayer').value;
-  const amount = parseFloat(document.getElementById('betAmount').value);
-  if (!bettor) { showBetMsg('Enter your name.', true); return; }
-  if (!player_id) { showBetMsg('Select a golfer.', true); return; }
-  if (!amount || amount < 1) { showBetMsg('Minimum bet is $1.', true); return; }
-  saveBettorName(bettor);
-  try {
-    await api('POST', '/api/bet', { bettor, player_id: parseInt(player_id), type: selectedBetType, amount });
-    showBetMsg('Bet placed!', false);
-    await loadState();
-  } catch(e) { showBetMsg(e.message, true); }
+function renderNoEvent() {
+  document.getElementById('view').innerHTML = `
+    <div class="empty">
+      <div class="e">🎲</div>
+      <h2>No event running yet</h2>
+      <p>When your host opens an event — a race, a tournament, a cook-off — the pools will show up right here.</p>
+    </div>`;
 }
 
-function showBetMsg(msg, isError) {
-  const el = document.getElementById('betMsg');
-  if (el) el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:0.875rem;background:${isError ? '#ffebee' : '#e8f5e9'};color:${isError ? '#b71c1c' : '#1b5e20'}">${esc(msg)}</div>`;
-}
+// ── Pools ──
+function renderPools() {
+  const m = cMap();
+  const markets = data.markets || [];
+  const open = markets.filter(x => x.status !== 'settled');
+  const live = data.event.status === 'open';
 
-// ─── Holes Tab ────────────────────────────────────────────────────────────────
-function renderHoles() {
-  const el = document.getElementById('tab-holes');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`; return; }
-
-  const holes = state.holes || [];
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-  const bettorName = getBettorName();
+  if (!markets.length) {
+    document.getElementById('view').innerHTML = `<div class="empty"><div class="e">🏁</div><h2>Pools coming up</h2><p>The host hasn't opened any betting pools yet. Hang tight.</p></div>`;
+    return;
+  }
 
   let html = '';
-  for (let round = 1; round <= t.rounds; round++) {
-    const openHoles = holes.filter(h => h.round === round && h.status === 'open');
-    const finalHoles = holes.filter(h => h.round === round && h.status === 'final');
+  if (open.length) {
+    html += open.map(mk => marketCard(mk, m, live)).join('');
+  } else {
+    html += `<div class="empty"><div class="e">✅</div><h2>All pools settled</h2><p>Check the Results tab to see how you did.</p></div>`;
+  }
+  document.getElementById('view').innerHTML = html;
+}
 
-    let roundHtml = `<h3 style="font-size:0.95rem;font-weight:600;color:var(--green-dark);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">Round ${round}</h3>`;
+function marketCard(mk, m, live) {
+  const closed = mk.status === 'closed' || !live;
+  const lines = (mk.lines || []).slice().sort((a, b) => b.backed - a.backed || a.contestant_id - b.contestant_id);
+  const chips = lines.map(ln => {
+    const c = m[ln.contestant_id];
+    const oddsTxt = ln.odds === -99999 ? 'Even' : (ln.odds == null ? '—' : (ln.odds > 0 ? '+' + ln.odds : ln.odds));
+    const showOdds = (mk.type === 'win' || mk.type === 'h2h');
+    const right = showOdds
+      ? `<div class="odds ${ln.odds!=null?'pos':''}">${oddsTxt}</div><div class="share">${money(ln.backed)}</div>`
+      : `<div class="odds pos">${ln.share}%</div><div class="share">${money(ln.backed)}</div>`;
+    const onclick = closed ? '' : `onclick="openBetSheet(${mk.id},${ln.contestant_id})"`;
+    return `<button class="chip" ${onclick} ${closed?'style="cursor:default"':''}>
+      ${ava(c)}
+      <div class="who"><div class="n">${c?esc(c.name):'?'}</div>${c&&c.subtitle?`<div class="s">${esc(c.subtitle)}</div>`:''}
+        <div class="barwrap"><div class="bar" style="width:${ln.share}%"></div></div></div>
+      <div class="right">${right}</div>
+    </button>`;
+  }).join('');
 
-    if (openHoles.length === 0 && finalHoles.length === 0) {
-      roundHtml += `<p style="color:var(--muted);font-size:0.875rem;margin-bottom:16px;">No holes open for betting right now.</p>`;
-    }
+  return `<div class="market">
+    <div class="market-head">
+      <span class="name">${esc(mk.name)}</span>
+      <span class="tag">${TYPE_LABEL[mk.type] || mk.type}</span>
+      <div class="pool"><div class="v">${money(mk.pool)}</div><div class="l">${closed?'closed':'pool'}</div></div>
+    </div>
+    ${chips}
+  </div>`;
+}
 
-    for (const h of openHoles) {
-      const playerOddsLines = Object.entries(h.playerPools || {}).map(([pid, amt]) => {
-        const frac = h.pool > 0 ? amt / h.pool : 0;
-        return `${pMap[pid] ? esc(pMap[pid].name) : '?'}: ${(frac * 100).toFixed(0)}% of pool`;
-      }).join(' | ');
-
-      const playerOpts = players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-      roundHtml += `<div class="hole-card">
-        <h4>Hole ${h.hole} <span class="badge badge-open">OPEN</span></h4>
-        <div class="pool-info">Pool: ${fmt(h.pool)}${playerOddsLines ? ' &mdash; ' + playerOddsLines : ''}</div>
-        <div id="hbMsg_${round}_${h.hole}"></div>
-        <div class="form-group" style="margin-bottom:8px;">
-          <label>Pick Golfer</label>
-          <select id="hbPlayer_${round}_${h.hole}">${playerOpts}</select>
-        </div>
-        <div class="form-group" style="margin-bottom:8px;">
-          <label>Amount ($)</label>
-          <input type="number" id="hbAmount_${round}_${h.hole}" min="1" value="5" step="1">
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="placeHoleBet(${round},${h.hole})">Bet on Hole ${h.hole}</button>
-      </div>`;
-    }
-
-    for (const h of finalHoles) {
-      const winnerName = h.is_push ? 'PUSH' : (pMap[h.winner_player_id] ? pMap[h.winner_player_id].name : '?');
-      const myPayouts = (h.payouts || []).filter(x => x.bet.bettor_name === bettorName);
-      let myLine = '';
-      if (myPayouts.length > 0) {
-        const total = myPayouts.reduce((s, x) => s + (x.payout || x.refund), 0);
-        myLine = ` &mdash; <strong style="color:var(--green-dark)">You: ${fmt(total)}</strong>`;
+// ── My Bets ──
+function collectMyBets() {
+  const me = getName(); if (!me) return [];
+  const m = cMap(); const out = [];
+  for (const mk of (data.markets || [])) {
+    for (const b of (mk.bets || [])) {
+      if (b.bettor_name !== me) continue;
+      let payout = null;
+      if (mk.status === 'settled') {
+        const p = (mk.payouts || []).find(x => x.bet.id === b.id);
+        payout = p ? (p.payout || p.refund) : 0;
       }
-      roundHtml += `<div class="hole-card">
-        <h4>Hole ${h.hole} <span class="badge badge-final">FINAL</span></h4>
-        <div class="hole-result">Winner: <strong>${esc(winnerName)}</strong> &mdash; Pool: ${fmt(h.pool)}${myLine}</div>
-      </div>`;
+      out.push({ bet: b, market: mk, contestant: m[b.contestant_id], payout });
     }
-
-    html += `<div style="margin-bottom:20px;">${roundHtml}</div>`;
   }
-
-  el.innerHTML = html || `<div class="card"><div class="no-data">No hole data.</div></div>`;
+  return out.sort((a, b) => new Date(b.bet.timestamp) - new Date(a.bet.timestamp));
 }
 
-async function placeHoleBet(round, hole) {
-  const bettor = getBettorName() || prompt('Your name?');
-  if (!bettor) return;
-  saveBettorName(bettor);
-  const player_id = parseInt(document.getElementById(`hbPlayer_${round}_${hole}`).value);
-  const amount = parseFloat(document.getElementById(`hbAmount_${round}_${hole}`).value);
-  try {
-    await api('POST', '/api/hole-bet', { bettor, player_id, round, hole, amount });
-    const msgEl = document.getElementById(`hbMsg_${round}_${hole}`);
-    if (msgEl) msgEl.innerHTML = `<div style="padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:0.8rem;background:#e8f5e9;color:#1b5e20">Bet placed!</div>`;
-    await loadState();
-  } catch(e) {
-    const msgEl = document.getElementById(`hbMsg_${round}_${hole}`);
-    if (msgEl) msgEl.innerHTML = `<div style="padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:0.8rem;background:#ffebee;color:#b71c1c">${esc(e.message)}</div>`;
-  }
-}
-
-// ─── PvP Tab ──────────────────────────────────────────────────────────────────
-function renderPvp() {
-  const el = document.getElementById('tab-pvp');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`; return; }
-
-  const players = state.players || [];
-  const matchups = state.matchups || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-  const bettorName = getBettorName();
-
-  const playerOpts = players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-
-  // Propose form
-  let proposeForm = `
-    <div class="card">
-      <h2>Propose Matchup</h2>
-      <div id="proposeMsg"></div>
-      <div class="form-group">
-        <label>Your Name</label>
-        <input id="pvpProposer" value="${esc(bettorName)}" placeholder="Your name" oninput="saveBettorName(this.value)">
-      </div>
-      <div class="form-group">
-        <label>Player 1</label>
-        <select id="pvpP1">${playerOpts}</select>
-      </div>
-      <div class="form-group">
-        <label>Player 2</label>
-        <select id="pvpP2">${playerOpts}</select>
-      </div>
-      <div class="form-group">
-        <label>Scoring Type</label>
-        <select id="pvpScoring"><option value="net">Net Score</option><option value="match">Match Play</option></select>
-      </div>
-      <div class="form-group">
-        <label><input type="checkbox" id="pvpCustomStakes" onchange="toggleCustomStakes()"> Custom Stakes (min bet)</label>
-      </div>
-      <div id="pvpMinBetSection" style="display:none;" class="form-group">
-        <label>Minimum Bet ($)</label>
-        <input type="number" id="pvpMinBet" value="5" min="1">
-      </div>
-      <button class="btn btn-primary" onclick="proposeMatchup()">Propose Matchup</button>
-    </div>`;
-
-  // Open matchups
-  const openMatchups = matchups.filter(m => m.status === 'open' || m.status === 'closed');
-  const finalMatchups = matchups.filter(m => m.status === 'final');
-
-  let matchupCards = openMatchups.map(m => {
-    const p1 = m.player1 || pMap[m.player1_id] || { name: '?' };
-    const p2 = m.player2 || pMap[m.player2_id] || { name: '?' };
-    const canBet = m.status === 'open';
-
-    let betForm = '';
-    if (canBet) {
-      betForm = `
-        <div id="pvbMsg_${m.id}"></div>
-        <div class="pool-bar">
-          <div class="side" id="pvbSide_${m.id}_${m.player1_id}" onclick="selectPvpSide(${m.id},${m.player1_id})">
-            <strong>${esc(p1.name)}</strong><br>${fmt(m.p1Pool)}
-          </div>
-          <div class="side" id="pvbSide_${m.id}_${m.player2_id}" onclick="selectPvpSide(${m.id},${m.player2_id})">
-            <strong>${esc(p2.name)}</strong><br>${fmt(m.p2Pool)}
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end;">
-          <div style="flex:1;"><input type="number" id="pvbAmount_${m.id}" min="${m.use_custom_stakes ? m.min_bet : 1}" value="${m.use_custom_stakes ? m.min_bet : 5}" step="1" placeholder="Amount"></div>
-          <button class="btn btn-primary btn-sm" onclick="placePvpBet(${m.id})">Bet</button>
-        </div>`;
-    } else {
-      betForm = `<p style="font-size:0.8rem;color:var(--muted);">Betting closed. Awaiting result.</p>`;
-    }
-
-    return `<div class="pvp-card">
-      <h4>${esc(p1.name)} vs ${esc(p2.name)} <span class="badge badge-${m.status === 'open' ? 'open' : 'closed'}">${m.status.toUpperCase()}</span></h4>
-      <div class="meta">${m.scoring_type.toUpperCase()} | Proposed by ${esc(m.proposed_by)}${m.use_custom_stakes ? ` | Min: ${fmt(m.min_bet)}` : ''}</div>
-      ${betForm}
-    </div>`;
-  }).join('');
-
-  let finalCards = finalMatchups.map(m => {
-    const p1 = m.player1 || pMap[m.player1_id] || { name: '?' };
-    const p2 = m.player2 || pMap[m.player2_id] || { name: '?' };
-    const winner = m.is_push ? 'PUSH' : (pMap[m.winner_player_id] ? pMap[m.winner_player_id].name : '?');
-    const myPayouts = (m.payouts || []).filter(x => x.bet.bettor_name === bettorName);
-    let myLine = '';
-    if (myPayouts.length > 0) {
-      const total = myPayouts.reduce((s, x) => s + (x.payout || x.refund), 0);
-      myLine = ` &mdash; You: <strong style="color:var(--green-dark)">${fmt(total)}</strong>`;
-    }
-    return `<div class="pvp-card">
-      <h4>${esc(p1.name)} vs ${esc(p2.name)} <span class="badge badge-final">FINAL</span></h4>
-      <div class="meta">${m.scoring_type.toUpperCase()} | Total Pool: ${fmt(m.totalPool)}</div>
-      <div style="background:var(--green-light);border-radius:6px;padding:8px 12px;font-size:0.875rem;">
-        Winner: <strong>${esc(winner)}</strong>${myLine}
-      </div>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = proposeForm +
-    (openMatchups.length > 0 ? `<div class="card"><h2>Open Matchups</h2>${matchupCards}</div>` : '') +
-    (finalMatchups.length > 0 ? `<div class="card"><h2>Completed Matchups</h2>${finalCards}</div>` : '') +
-    (matchups.length === 0 ? `<div class="card"><div class="no-data">No matchups yet.</div></div>` : '');
-
-  // Restore selected sides
-  Object.keys(pvpSelectedSides).forEach(matchupId => {
-    const playerId = pvpSelectedSides[matchupId];
-    const el2 = document.getElementById(`pvbSide_${matchupId}_${playerId}`);
-    if (el2) el2.classList.add('selected');
-  });
-}
-
-const pvpSelectedSides = {};
-
-function toggleCustomStakes() {
-  const show = document.getElementById('pvpCustomStakes').checked;
-  document.getElementById('pvpMinBetSection').style.display = show ? '' : 'none';
-}
-
-function selectPvpSide(matchupId, playerId) {
-  pvpSelectedSides[matchupId] = playerId;
-  // Update UI
-  document.querySelectorAll(`[id^="pvbSide_${matchupId}_"]`).forEach(e => e.classList.remove('selected'));
-  const target = document.getElementById(`pvbSide_${matchupId}_${playerId}`);
-  if (target) target.classList.add('selected');
-}
-
-async function proposeMatchup() {
-  const proposed_by = document.getElementById('pvpProposer').value.trim();
-  const player1_id = document.getElementById('pvpP1').value;
-  const player2_id = document.getElementById('pvpP2').value;
-  const scoring_type = document.getElementById('pvpScoring').value;
-  const useCustom = document.getElementById('pvpCustomStakes').checked;
-  const min_bet = useCustom ? parseFloat(document.getElementById('pvpMinBet').value) : 1;
-  if (!proposed_by) { showProposeMsg('Enter your name.', true); return; }
-  if (player1_id === player2_id) { showProposeMsg('Players must be different.', true); return; }
-  saveBettorName(proposed_by);
-  try {
-    await api('POST', '/api/pvp/propose', { proposed_by, player1_id: parseInt(player1_id), player2_id: parseInt(player2_id), scoring_type, use_custom_stakes: useCustom, min_bet });
-    showProposeMsg('Matchup proposed!', false);
-    await loadState();
-  } catch(e) { showProposeMsg(e.message, true); }
-}
-
-function showProposeMsg(msg, isError) {
-  const el = document.getElementById('proposeMsg');
-  if (el) el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:0.875rem;background:${isError ? '#ffebee' : '#e8f5e9'};color:${isError ? '#b71c1c' : '#1b5e20'}">${esc(msg)}</div>`;
-}
-
-async function placePvpBet(matchupId) {
-  const bettor = getBettorName() || prompt('Your name?');
-  if (!bettor) return;
-  saveBettorName(bettor);
-  const player_id = pvpSelectedSides[matchupId];
-  if (!player_id) { alert('Select a side first.'); return; }
-  const amount = parseFloat(document.getElementById(`pvbAmount_${matchupId}`).value);
-  try {
-    await api('POST', `/api/pvp/${matchupId}/bet`, { bettor, player_id: parseInt(player_id), amount });
-    const msgEl = document.getElementById(`pvbMsg_${matchupId}`);
-    if (msgEl) msgEl.innerHTML = `<div style="padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:0.8rem;background:#e8f5e9;color:#1b5e20">Bet placed!</div>`;
-    await loadState();
-  } catch(e) {
-    const msgEl = document.getElementById(`pvbMsg_${matchupId}`);
-    if (msgEl) msgEl.innerHTML = `<div style="padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:0.8rem;background:#ffebee;color:#b71c1c">${esc(e.message)}</div>`;
-  }
-}
-
-// ─── Standings Tab ────────────────────────────────────────────────────────────
-function renderStandings() {
-  const el = document.getElementById('tab-standings');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`; return; }
-
-  const standings = state.standings || [];
-  const hasAnyScores = standings.some(s => s.hasScores);
-
-  if (!hasAnyScores) {
-    el.innerHTML = `<div class="card"><div class="no-data">No scores posted yet.</div></div>`;
+function renderMyBets() {
+  const me = getName();
+  if (!me) {
+    document.getElementById('view').innerHTML = `<div class="empty"><div class="e">👋</div><h2>Set your name first</h2><p>Tap “Set name” up top, then your bets will collect here.</p></div>`;
     return;
   }
-
-  const netHeaders = Array.from({length: t.rounds}, (_, i) => `<th>R${i+1} Net</th>`).join('');
-  const rows = standings.map((s, i) => {
-    const dimClass = s.hasScores ? '' : 'standings-row-dim';
-    const posClass = s.position === 1 ? 'rank-1' : s.position === 2 ? 'rank-2' : s.position === 3 ? 'rank-3' : '';
-    const netCols = (s.roundNets || []).map(rn => `<td>${rn.net != null ? rn.net : '—'}</td>`).join('');
-    return `<tr class="${dimClass}">
-      <td class="${posClass}">${s.position != null ? s.position : '—'}</td>
-      <td>${esc(s.player.name)} <small style="color:var(--muted)">(${s.effHcp})</small></td>
-      ${netCols}
-      <td><strong>${s.totalNet != null ? s.totalNet : '—'}</strong></td>
-    </tr>`;
-  }).join('');
-
-  el.innerHTML = `<div class="card">
-    <h2>Net Standings</h2>
-    <table>
-      <thead><tr><th>#</th><th>Player (HCP)</th>${netHeaders}<th>Total Net</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
-}
-
-// ─── History Tab ──────────────────────────────────────────────────────────────
-function renderHistory() {
-  const el = document.getElementById('tab-history');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`; return; }
-
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-
-  const bets = [...(state.bets || [])].reverse();
-  const holes = state.holes || [];
-  const matchups = state.matchups || [];
-
-  const allBets = [];
-
-  for (const b of bets) {
-    allBets.push({ time: b.timestamp, bettor: b.bettor_name, type: b.type, label: pMap[b.player_id] ? pMap[b.player_id].name : '?', amount: b.amount });
-  }
-
-  for (const h of holes) {
-    for (const b of (h.bets || [])) {
-      allBets.push({ time: b.timestamp, bettor: b.bettor_name, type: 'hole', label: `R${h.round} Hole ${h.hole} — ${pMap[b.player_id] ? pMap[b.player_id].name : '?'}`, amount: b.amount });
-    }
-  }
-
-  for (const m of matchups) {
-    const p1 = pMap[m.player1_id] || { name: '?' };
-    const p2 = pMap[m.player2_id] || { name: '?' };
-    for (const b of (m.bets || [])) {
-      allBets.push({ time: b.timestamp, bettor: b.bettor_name, type: 'pvp', label: `${esc(p1.name)} vs ${esc(p2.name)} — ${pMap[b.player_id] ? pMap[b.player_id].name : '?'}`, amount: b.amount });
-    }
-  }
-
-  allBets.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-  if (allBets.length === 0) {
-    el.innerHTML = `<div class="card"><div class="no-data">No bets placed yet.</div></div>`;
+  const mine = collectMyBets();
+  if (!mine.length) {
+    document.getElementById('view').innerHTML = `<div class="empty"><div class="e">🎟️</div><h2>No bets yet</h2><p>Head to the Pools tab and back a contestant to get in on the action.</p></div>`;
     return;
   }
+  let wagered = 0, returned = 0, settled = 0;
+  for (const x of mine) { wagered += x.bet.amount; if (x.payout != null) { returned += x.payout; settled++; } }
+  const net = returned - wagered;
+  const summary = settled ? `
+    <div class="summary-card">
+      <div class="box"><div class="v">${money(wagered)}</div><div class="l">Wagered</div></div>
+      <div class="box"><div class="v">${money(returned)}</div><div class="l">Returned</div></div>
+      <div class="box"><div class="v ${net>=0?'pos':'neg'}">${net>=0?'+':''}${money(net)}</div><div class="l">Net</div></div>
+    </div>` : '';
 
-  const rows = allBets.map(b => `<tr>
-    <td>${esc(b.bettor)}</td>
-    <td><span class="badge badge-${b.type}">${b.type.toUpperCase()}</span></td>
-    <td>${esc(b.label)}</td>
-    <td>${fmt(b.amount)}</td>
-  </tr>`).join('');
-
-  el.innerHTML = `<div class="card">
-    <h2>Bet History</h2>
-    <table>
-      <thead><tr><th>Bettor</th><th>Type</th><th>On</th><th>Amount</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
-}
-
-// ─── Odds Tab ─────────────────────────────────────────────────────────────────
-function renderOdds() {
-  const el = document.getElementById('tab-odds');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="card"><div class="no-data">No active tournament.</div></div>`; return; }
-
-  const players = state.players || [];
-  const oddsMap = state.oddsMap || {};
-
-  function fmtOdds(odds) {
-    if (odds === null) return '<span style="color:var(--muted)">—</span>';
-    if (odds === -99999) return '<span class="odds-neg">Fav</span>';
-    if (odds > 0) return `<span class="odds-pos">+${odds}</span>`;
-    return `<span class="odds-neg">${odds}</span>`;
-  }
-
-  const rows = players.map(p => {
-    const o = oddsMap[p.id] || {};
-    return `<tr>
-      <td>${esc(p.name)}</td>
-      <td>${fmtOdds(o.winOdds)}</td>
-      <td>${fmt(o.winAmount || 0)}</td>
-      <td>${fmtOdds(o.showOdds)}</td>
-      <td>${fmt(o.showAmount || 0)}</td>
-    </tr>`;
+  const rows = mine.map(x => {
+    let right;
+    if (x.payout == null) right = `<div class="amt"><div class="big">${money(x.bet.amount)}</div><span class="status-tag open">Live</span></div>`;
+    else {
+      const profit = x.payout - x.bet.amount;
+      right = `<div class="amt"><div class="big ${profit>=0?'pos':'neg'}">${x.payout>0?money(x.payout):'—'}</div><div class="lab">${profit>=0?'+'+money(profit):money(profit)}</div></div>`;
+    }
+    return `<div class="row">${ava(x.contestant)}
+      <div class="mid"><div class="t">${x.contestant?esc(x.contestant.name):'?'}</div><div class="sub">${esc(x.market.name)} · ${money(x.bet.amount)}</div></div>
+      ${right}</div>`;
   }).join('');
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-      <div class="card" style="text-align:center;margin-bottom:0">
-        <div style="font-size:1.5rem;font-weight:700;color:var(--green-dark)">${fmt(state.winPool || 0)}</div>
-        <div style="font-size:0.8rem;color:var(--muted)">Win Pool</div>
-      </div>
-      <div class="card" style="text-align:center;margin-bottom:0">
-        <div style="font-size:1.5rem;font-weight:700;color:var(--amber)">${fmt(state.showPool || 0)}</div>
-        <div style="font-size:0.8rem;color:var(--muted)">Show Pool</div>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Current Odds</h2>
-      <table>
-        <thead><tr><th>Player</th><th>WIN Odds</th><th>WIN Backed</th><th>SHOW Odds</th><th>SHOW Backed</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No bets yet</td></tr>'}</tbody>
-      </table>
-    </div>
-    <div class="card">
-      <h2>How Odds Work</h2>
-      <p style="font-size:0.875rem;line-height:1.6;color:var(--muted)">
-        American odds show your profit on a $100 bet.<br>
-        <strong>+150</strong> means a $100 bet profits $150 (total return $250).<br>
-        <strong>-200</strong> means you must bet $200 to profit $100 (total return $300).<br>
-        Odds update in real time as bets come in. This is pari-mutuel — your final payout depends on the total pool when betting closes.
-      </p>
-    </div>`;
+  document.getElementById('view').innerHTML = summary + `<div class="section-title">Your bets</div>` + rows;
 }
 
-// ─── Stats Tab ────────────────────────────────────────────────────────────────
-async function loadStats() {
-  try {
-    statsData = await api('GET', '/api/stats');
-    if (activeTab === 'stats') renderStats();
-  } catch(e) { console.error(e); }
-}
-
-function renderStats() {
-  const el = document.getElementById('tab-stats');
-  const data = statsData;
-
-  if (!data) {
-    el.innerHTML = `<div class="card"><div class="no-data">Loading stats...</div></div>`;
-    loadStats();
+// ── Results ──
+function renderResults() {
+  const m = cMap();
+  const settled = (data.markets || []).filter(x => x.status === 'settled');
+  if (!settled.length) {
+    document.getElementById('view').innerHTML = `<div class="empty"><div class="e">🏆</div><h2>No results yet</h2><p>Once the host settles a pool, winners and payouts land here.</p></div>`;
     return;
   }
-
-  const bettorName = getBettorName();
-  const bettors = data.bettors || [];
-  const players = data.players || [];
-
-  const bettorRows = bettors.map(b => {
-    const netClass = b.net >= 0 ? 'payout-pos' : 'payout-neg';
-    return `<tr>
-      <td><strong>${esc(b.name)}</strong></td>
-      <td>${fmt(b.wagered)}</td>
-      <td>${fmt(b.payout)}</td>
-      <td class="${netClass}">${b.net >= 0 ? '+' : ''}${fmt(b.net)}</td>
-      <td>${b.winRate}%</td>
-      <td>${b.betsPlaced}</td>
-    </tr>`;
+  const me = getName();
+  const cards = settled.map(mk => {
+    const winners = (mk.results || []).filter(r => r.rank <= (mk.type === 'topn' ? mk.top_n : 1));
+    const wNames = mk.is_push ? 'Push — all refunded' : winners.map(w => { const c = m[w.contestant_id]; return c ? `${c.emoji||''} ${esc(c.name)}` : '?'; }).join(', ') || 'No result';
+    let mine = '';
+    if (me) {
+      const myP = (mk.payouts || []).filter(p => p.bet.bettor_name === me);
+      if (myP.length) {
+        const tot = myP.reduce((s, p) => s + (p.payout || p.refund), 0);
+        const wag = myP.reduce((s, p) => s + p.bet.amount, 0);
+        const net = tot - wag;
+        mine = `<div class="amt"><div class="big ${net>=0?'pos':'neg'}">${net>=0?'+':''}${money(net)}</div><div class="lab">your net</div></div>`;
+      }
+    }
+    return `<div class="row">
+      <div class="ava">🏁</div>
+      <div class="mid"><div class="t">${esc(mk.name)}</div><div class="sub">🏆 ${wNames} · ${money(mk.pool)} pool</div></div>
+      ${mine}</div>`;
   }).join('');
-
-  const playerRows = players.map(p => `<tr>
-    <td><strong>${esc(p.name)}</strong></td>
-    <td>${p.tournaments}</td>
-    <td>${p.wins}</td>
-    <td>${p.top3}</td>
-    <td>${p.avgNet != null ? p.avgNet : '—'}</td>
-    <td>${fmt(p.totalBacking)}</td>
-  </tr>`).join('');
-
-  el.innerHTML = `
-    <div class="card">
-      <h2>Bettor Stats</h2>
-      <div class="form-group" style="margin-bottom:12px;">
-        <label>Filter by name</label>
-        <input id="statsFilter" value="${esc(bettorName)}" placeholder="Type a name..." oninput="filterStats(this.value)">
-      </div>
-      ${bettors.length === 0
-        ? '<div class="no-data">No finalized tournament data yet.</div>'
-        : `<table>
-          <thead><tr><th>Bettor</th><th>Wagered</th><th>Returned</th><th>Net</th><th>Win Rate</th><th>Bets</th></tr></thead>
-          <tbody>${bettorRows}</tbody>
-        </table>`}
-    </div>
-    <div class="card">
-      <h2>Player Leaderboard</h2>
-      ${players.length === 0
-        ? '<div class="no-data">No finalized tournament data yet.</div>'
-        : `<table>
-          <thead><tr><th>Player</th><th>Tournaments</th><th>Wins</th><th>Top 3</th><th>Avg Net</th><th>Total Backed</th></tr></thead>
-          <tbody>${playerRows}</tbody>
-        </table>`}
-    </div>`;
+  document.getElementById('view').innerHTML = `<div class="section-title">Settled pools</div>` + cards;
 }
 
-async function filterStats(name) {
-  try {
-    const url = '/api/stats' + (name ? '?bettor=' + encodeURIComponent(name) : '');
-    statsData = await api('GET', url);
-    renderStats();
-  } catch(e) { console.error(e); }
-}
-
-// ─── Payouts Tab ──────────────────────────────────────────────────────────────
-function renderPayouts() {
-  const el = document.getElementById('tab-payouts');
-  const t = state && state.tournament;
-  if (!t || t.status !== 'final') { el.innerHTML = `<div class="card"><div class="no-data">Tournament not finalized yet.</div></div>`; return; }
-
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-  const results = state.results;
-  const mainPayouts = state.mainPayouts || [];
-  const holes = state.holes || [];
-  const matchups = state.matchups || [];
-  const bettorName = getBettorName();
-
-  // Results box
-  let resultsBox = '';
-  if (results) {
-    resultsBox = `<div class="card" style="border-color:#a5d6a7">
-      <h2>Final Results</h2>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
-        <div><div class="rank-1" style="font-size:1.5rem">1st</div><div>${pMap[results.first_player_id] ? esc(pMap[results.first_player_id].name) : '—'}</div></div>
-        <div><div class="rank-2" style="font-size:1.5rem">2nd</div><div>${pMap[results.second_player_id] ? esc(pMap[results.second_player_id].name) : '—'}</div></div>
-        <div><div class="rank-3" style="font-size:1.5rem">3rd</div><div>${pMap[results.third_player_id] ? esc(pMap[results.third_player_id].name) : '—'}</div></div>
-      </div>
-    </div>`;
-  }
-
-  // Aggregate by bettor
-  const bettorTotals = {};
-  const bettorBets = {};
-
-  function addPayout(bettor, wagered, returned, type, label) {
-    if (!bettorTotals[bettor]) bettorTotals[bettor] = { wagered: 0, returned: 0 };
-    if (!bettorBets[bettor]) bettorBets[bettor] = [];
-    bettorTotals[bettor].wagered += wagered;
-    bettorTotals[bettor].returned += returned;
-    bettorBets[bettor].push({ type, label, wagered, returned });
-  }
-
-  for (const { bet, payout, refund } of mainPayouts) {
-    addPayout(bet.bettor_name, bet.amount, payout || refund, bet.type, pMap[bet.player_id] ? pMap[bet.player_id].name : '?');
-  }
-
-  for (const h of holes) {
-    if (h.status !== 'final') continue;
-    for (const { bet, payout, refund } of (h.payouts || [])) {
-      addPayout(bet.bettor_name, bet.amount, payout || refund, 'hole', `R${h.round} H${h.hole}`);
-    }
-  }
-
-  for (const m of matchups) {
-    if (m.status !== 'final') continue;
-    const p1 = pMap[m.player1_id] || { name: '?' };
-    const p2 = pMap[m.player2_id] || { name: '?' };
-    for (const { bet, payout, refund } of (m.payouts || [])) {
-      addPayout(bet.bettor_name, bet.amount, payout || refund, 'pvp', `${p1.name} vs ${p2.name}`);
-    }
-  }
-
-  // Summary table
-  const summaryRows = Object.entries(bettorTotals).sort((a, b) => (b[1].returned - b[1].wagered) - (a[1].returned - a[1].wagered)).map(([name, totals]) => {
-    const net = totals.returned - totals.wagered;
-    const netClass = net >= 0 ? 'payout-pos' : 'payout-neg';
-    const highlight = name === bettorName ? 'background:#f1f8e9;' : '';
-    return `<tr style="${highlight}">
-      <td><strong>${esc(name)}</strong></td>
-      <td>${fmt(totals.wagered)}</td>
-      <td>${fmt(totals.returned)}</td>
-      <td class="${netClass}">${net >= 0 ? '+' : ''}${fmt(net)}</td>
-    </tr>`;
-  }).join('');
-
-  // Individual breakdown for current bettor
-  let myBreakdown = '';
-  const myName = bettorName;
-  if (myName && bettorBets[myName]) {
-    const myRows = bettorBets[myName].map(b => {
-      const net = b.returned - b.wagered;
-      const netClass = net >= 0 ? 'payout-pos' : 'payout-neg';
-      return `<tr>
-        <td><span class="badge badge-${b.type}">${b.type.toUpperCase()}</span></td>
-        <td>${esc(b.label)}</td>
-        <td>${fmt(b.wagered)}</td>
-        <td>${fmt(b.returned)}</td>
-        <td class="${netClass}">${net >= 0 ? '+' : ''}${fmt(net)}</td>
-      </tr>`;
+// ── Board (odds board across all pools) ──
+function renderBoard() {
+  const m = cMap();
+  const markets = data.markets || [];
+  if (!markets.length) { document.getElementById('view').innerHTML = `<div class="empty"><div class="e">📊</div><h2>Nothing on the board</h2><p>Odds will appear as pools open and bets come in.</p></div>`; return; }
+  const blocks = markets.map(mk => {
+    const lines = (mk.lines || []).slice().sort((a, b) => b.backed - a.backed);
+    const rows = lines.map(ln => {
+      const c = m[ln.contestant_id];
+      const showOdds = (mk.type === 'win' || mk.type === 'h2h');
+      const val = showOdds ? (ln.odds === -99999 ? 'Even' : ln.odds == null ? '—' : (ln.odds > 0 ? '+' + ln.odds : ln.odds)) : ln.share + '%';
+      return `<div class="row"><div class="ava">${c&&c.emoji?c.emoji:'?'}</div>
+        <div class="mid"><div class="t">${c?esc(c.name):'?'}</div><div class="sub">${money(ln.backed)} backed · ${ln.share}% of pool</div></div>
+        <div class="amt"><div class="big pos">${val}</div></div></div>`;
     }).join('');
-    myBreakdown = `<div class="card">
-      <h2>Your Bets — ${esc(myName)}</h2>
-      <table>
-        <thead><tr><th>Type</th><th>On</th><th>Wagered</th><th>Returned</th><th>Net</th></tr></thead>
-        <tbody>${myRows}</tbody>
-      </table>
-    </div>`;
-  }
-
-  el.innerHTML = resultsBox + `
-    <div class="card">
-      <h2>Payout Summary</h2>
-      ${Object.keys(bettorTotals).length === 0 ? '<div class="no-data">No bets placed.</div>' : `
-      <table>
-        <thead><tr><th>Bettor</th><th>Wagered</th><th>Returned</th><th>Net</th></tr></thead>
-        <tbody>${summaryRows}</tbody>
-      </table>`}
-    </div>
-    ${myBreakdown}`;
+    return `<div class="section-title">${esc(mk.name)} — ${money(mk.pool)}</div>${rows || '<div class="row"><div class="mid"><div class="sub">No bets yet</div></div></div>'}`;
+  }).join('');
+  document.getElementById('view').innerHTML = blocks;
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-loadState();
-setInterval(loadState, 10000);
+// ─── Bet sheet ──────────────────────────────────────────────────────────────
+function openBetSheet(marketId, contestantId) {
+  if (!getName()) { openNameSheet(); return; }
+  const market = (data.markets || []).find(m => m.id === marketId);
+  const contestant = (data.contestants || []).find(c => c.id === contestantId);
+  if (!market || !contestant) return;
+  bet = { market, contestant };
+  const min = data.event.min_bet || 1;
+  document.getElementById('betAmount').value = Math.max(5, min);
+  renderBetSheet();
+  document.getElementById('curLabel').textContent = cur();
+  document.getElementById('betBackdrop').classList.add('show');
+  document.getElementById('betSheet').classList.add('show');
+}
+function closeBetSheet() {
+  document.getElementById('betBackdrop').classList.remove('show');
+  document.getElementById('betSheet').classList.remove('show');
+}
+function step() { const min = data.event.min_bet || 1; return Math.max(1, Math.round(min)); }
+function bumpAmount(d) {
+  const el = document.getElementById('betAmount');
+  el.value = Math.max(data.event.min_bet || 1, (parseFloat(el.value) || 0) + d);
+  renderBetSheet();
+}
+function renderBetSheet() {
+  if (!bet) return;
+  const c = bet.contestant, mk = bet.market;
+  document.getElementById('betTitle').textContent = mk.name;
+  document.getElementById('betSub').textContent = TYPE_LABEL[mk.type] || '';
+  const line = (mk.lines || []).find(l => l.contestant_id === c.id) || { backed: 0, odds: null, share: 0 };
+  const showOdds = (mk.type === 'win' || mk.type === 'h2h');
+  const oddsTxt = showOdds ? (line.odds === -99999 ? 'Even money' : line.odds == null ? 'No bets yet' : (line.odds > 0 ? '+' + line.odds : line.odds) + ' odds') : line.share + '% of pool';
+  document.getElementById('betPick').innerHTML = `${ava(c)}<div><div class="n">${esc(c.name)}</div><div class="m">${oddsTxt} · ${money(line.backed)} backed</div></div>`;
+  const min = data.event.min_bet || 1;
+  const chips = [min, 5, 10, 25, 50].filter((v, i, a) => v >= min && a.indexOf(v) === i).slice(0, 4);
+  document.getElementById('quickChips').innerHTML = chips.map(v => `<button onclick="document.getElementById('betAmount').value=${v};renderBetSheet()">${cur()}${v}</button>`).join('');
+  const amt = parseFloat(document.getElementById('betAmount').value) || 0;
+  document.getElementById('placeBtn').disabled = amt < min;
+  document.getElementById('placeBtn').textContent = amt >= min ? `Place ${money(amt)} on ${c.name}` : `Min bet ${money(min)}`;
+}
+async function submitBet() {
+  if (!bet) return;
+  const amount = parseFloat(document.getElementById('betAmount').value);
+  const btn = document.getElementById('placeBtn'); btn.disabled = true;
+  try {
+    await api('POST', '/api/bet', { market_id: bet.market.id, bettor: getName(), contestant_id: bet.contestant.id, amount });
+    closeBetSheet();
+    toast(`Bet placed on ${bet.contestant.name}! 🎉`);
+    await load();
+  } catch (e) { toast(e.message, true); btn.disabled = false; }
+}
+
+// ─── Name sheet ─────────────────────────────────────────────────────────────
+function openNameSheet() {
+  document.getElementById('nameInput').value = getName();
+  document.getElementById('nameBackdrop').classList.add('show');
+  document.getElementById('nameSheet').classList.add('show');
+  setTimeout(() => document.getElementById('nameInput').focus(), 250);
+}
+function closeNameSheet() {
+  document.getElementById('nameBackdrop').classList.remove('show');
+  document.getElementById('nameSheet').classList.remove('show');
+}
+function saveName() {
+  const n = document.getElementById('nameInput').value.trim();
+  if (!n) return;
+  setName(n);
+  document.getElementById('nameLabel').textContent = n;
+  closeNameSheet();
+  renderTab();
+  toast('Welcome, ' + n + '!');
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
+if (getName()) document.getElementById('nameLabel').textContent = getName();
+load();
+setInterval(load, 8000);
 </script>
 </body>
 </html>

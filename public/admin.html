@@ -2,738 +2,470 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Golf Betting — Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f14">
+  <title>SideBet · Host</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <script src="config.js"></script>
   <style>
     :root {
-      --green-dark: #1a5c1a;
-      --green-mid: #2e7d2e;
-      --green-light: #e8f5e9;
-      --amber: #f57c00;
-      --bg: #f0f2f0;
-      --white: #ffffff;
-      --text: #1a1a1a;
-      --muted: #666;
-      --border: #c8d8c8;
-      --danger: #c62828;
-      --radius: 8px;
+      --bg:#0b0f14; --surface:#141b23; --surface-2:#1b242e; --surface-3:#232f3b;
+      --border:#28333f; --text:#eef2f6; --muted:#8a97a6; --muted-2:#5f6c7a;
+      --accent:#34d399; --accent-ink:#04140d; --accent-glow:rgba(52,211,153,0.3);
+      --pos:#34d399; --neg:#fb7185; --radius:16px; --radius-sm:11px;
+      --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-    header { background: var(--green-dark); color: white; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
-    header h1 { font-size: 1.2rem; font-weight: 700; }
-    header span { font-size: 0.85rem; opacity: 0.8; margin-left: auto; }
-    nav { background: var(--green-mid); display: flex; overflow-x: auto; scrollbar-width: none; }
-    nav::-webkit-scrollbar { display: none; }
-    nav button { background: none; border: none; color: rgba(255,255,255,0.75); padding: 12px 18px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.15s; }
-    nav button.active { color: white; border-bottom-color: #a5d6a7; }
-    nav button:hover { color: white; background: rgba(255,255,255,0.1); }
-    .tab { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
-    .tab.active { display: block; }
-    .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; }
-    .card h2 { font-size: 1rem; font-weight: 600; color: var(--green-dark); margin-bottom: 12px; }
-    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
-    .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-    .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
-    input, select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.9rem; width: 100%; background: white; }
-    input:focus, select:focus { outline: 2px solid var(--green-mid); border-color: var(--green-mid); }
-    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: opacity 0.15s; white-space: nowrap; }
-    .btn:hover { opacity: 0.85; }
-    .btn-primary { background: var(--green-mid); color: white; }
-    .btn-secondary { background: var(--amber); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-outline { background: transparent; border: 1px solid var(--green-mid); color: var(--green-mid); }
-    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-    .badge-setup { background: #e3f2fd; color: #1565c0; }
-    .badge-open { background: #e8f5e9; color: #2e7d32; }
-    .badge-closed { background: #fff3e0; color: #e65100; }
-    .badge-final { background: #fce4ec; color: #ad1457; }
-    .badge-locked { background: #eceff1; color: #546e7a; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th { text-align: left; padding: 8px 10px; background: var(--green-light); color: var(--green-dark); font-weight: 600; border-bottom: 1px solid var(--border); }
-    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fafafa; }
-    .hole-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .hole-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
-    .hole-card h4 { font-size: 0.85rem; font-weight: 600; color: var(--green-dark); margin-bottom: 6px; }
-    .hole-card .pool { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
-    .hole-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .inline-form { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-    .inline-form label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 4px; cursor: pointer; }
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
-    .stat-box { background: var(--green-light); border-radius: var(--radius); padding: 12px; text-align: center; }
-    .stat-box .val { font-size: 1.3rem; font-weight: 700; color: var(--green-dark); }
-    .stat-box .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
-    .msg { padding: 10px 14px; border-radius: var(--radius); font-size: 0.875rem; margin-bottom: 12px; }
-    .msg-success { background: #e8f5e9; color: #1b5e20; }
-    .msg-error { background: #ffebee; color: #b71c1c; }
-    .round-section { margin-bottom: 20px; }
-    .round-section h3 { font-size: 0.95rem; font-weight: 600; color: var(--green-dark); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-    .scores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 600px) { .scores-grid { grid-template-columns: 1fr; } .hole-grid { grid-template-columns: repeat(2, 1fr); } }
-    .no-data { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
-    .pvp-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
-    .pvp-card .pvp-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-    .pvp-card .players { font-weight: 600; font-size: 0.95rem; }
-    .pvp-card .pools { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; padding-bottom:40px; }
+    body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background:radial-gradient(800px 400px at 80% -10%,var(--accent-glow),transparent 60%); }
+    header { position:sticky; top:0; z-index:20; padding:calc(12px + var(--safe-top)) 18px 12px; display:flex; align-items:center; gap:10px;
+      background:linear-gradient(180deg,rgba(11,15,20,0.94),rgba(11,15,20,0.6)); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+    .logo { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.1rem; letter-spacing:-0.02em; }
+    .logo .mark { width:28px; height:28px; }
+    .host-tag { margin-left:auto; font-size:0.72rem; font-weight:700; color:var(--accent); background:var(--surface-2); border:1px solid var(--border); padding:5px 11px; border-radius:999px; text-transform:uppercase; letter-spacing:0.06em; }
+    nav { position:sticky; top:0; z-index:15; display:flex; gap:4px; overflow-x:auto; padding:4px 12px 10px; scrollbar-width:none; background:var(--bg); }
+    nav::-webkit-scrollbar { display:none; }
+    nav button { flex:none; background:var(--surface-2); border:1px solid var(--border); color:var(--muted); padding:9px 15px; border-radius:999px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+    nav button.active { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+    main { position:relative; z-index:1; max-width:760px; margin:0 auto; padding:6px 14px 0; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; }
+    .card h2 { font-size:0.95rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .card h2 .tag { margin-left:auto; font-size:0.7rem; font-weight:600; color:var(--muted); }
+    label { font-size:0.74rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:5px; }
+    input, select { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:var(--text); font-size:0.95rem; }
+    input:focus, select:focus { outline:none; border-color:var(--accent); }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .fg { margin-bottom:12px; }
+    .btn { width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer; font-size:0.92rem; font-weight:700; transition:transform 0.08s; }
+    .btn:active { transform:scale(0.99); }
+    .btn-primary { background:var(--accent); color:var(--accent-ink); }
+    .btn-ghost { background:var(--surface-2); border:1px solid var(--border); color:var(--text); }
+    .btn-danger { background:rgba(251,113,133,0.12); border:1px solid rgba(251,113,133,0.4); color:var(--neg); }
+    .btn-sm { width:auto; padding:8px 13px; font-size:0.8rem; border-radius:9px; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-row .btn { flex:1; }
+    .tmpl-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .tmpl { text-align:left; background:var(--surface-2); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:13px; cursor:pointer; color:var(--text); }
+    .tmpl.sel { border-color:var(--accent); background:linear-gradient(180deg,var(--surface-3),var(--surface-2)); }
+    .tmpl .e { font-size:1.6rem; }
+    .tmpl .n { font-weight:700; margin-top:4px; }
+    .tmpl .b { font-size:0.74rem; color:var(--muted); margin-top:2px; line-height:1.35; }
+    .accent-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .swatch { width:34px; height:34px; border-radius:9px; cursor:pointer; border:2px solid transparent; }
+    .swatch.sel { border-color:var(--text); }
+    .listitem { display:flex; align-items:center; gap:11px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:8px; }
+    .listitem .ava { width:38px; height:38px; flex:none; border-radius:10px; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
+    .listitem .mid { flex:1; min-width:0; }
+    .listitem .mid .t { font-weight:700; font-size:0.92rem; }
+    .listitem .mid .s { font-size:0.74rem; color:var(--muted); }
+    .listitem .acts { display:flex; gap:6px; }
+    .icon-btn { width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--surface-3); color:var(--muted); cursor:pointer; font-size:0.95rem; display:flex; align-items:center; justify-content:center; }
+    .icon-btn.danger { color:var(--neg); }
+    .pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+    .pill.open { background:rgba(52,211,153,0.15); color:var(--pos); }
+    .pill.closed { background:#3a2a14; color:#f5b860; }
+    .pill.settled { background:#2a1f3d; color:#c39bf5; }
+    .pill.setup { background:var(--surface-3); color:var(--muted); }
+    .msg { padding:10px 13px; border-radius:10px; font-size:0.84rem; margin-bottom:12px; }
+    .msg.ok { background:rgba(52,211,153,0.12); color:var(--pos); }
+    .msg.err { background:rgba(251,113,133,0.12); color:var(--neg); }
+    .empty { text-align:center; color:var(--muted); padding:30px 16px; font-size:0.88rem; }
+    .empty .e { font-size:2.4rem; margin-bottom:8px; }
+    .market-admin { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px; margin-bottom:10px; }
+    .market-admin .mh { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .market-admin .mh .nm { font-weight:700; }
+    .market-admin .mh .ty { font-size:0.68rem; color:var(--muted); background:var(--surface-3); padding:2px 7px; border-radius:6px; }
+    .rank-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .rank-row .num { width:26px; height:26px; flex:none; border-radius:7px; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; color:var(--muted); }
+    .rank-row select { flex:1; }
+    .toast { position:fixed; left:50%; bottom:30px; transform:translateX(-50%) translateY(18px); z-index:60; background:var(--accent); color:var(--accent-ink); font-weight:700; padding:11px 18px; border-radius:999px; opacity:0; pointer-events:none; transition:all 0.28s; font-size:0.88rem; }
+    .toast.show { opacity:1; transform:translateX(-50%); }
+    .toast.err { background:var(--neg); color:#2a0a10; }
+    .check { display:flex; align-items:center; gap:9px; padding:9px 11px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; margin-bottom:6px; cursor:pointer; }
+    .check input { width:auto; }
+    .hint { font-size:0.74rem; color:var(--muted-2); margin-top:8px; line-height:1.45; }
+    /* PIN overlay */
+    .overlay { position:fixed; inset:0; z-index:100; background:rgba(7,10,14,0.86); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .overlay .box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; max-width:320px; width:100%; }
+    .overlay h2 { display:flex; align-items:center; gap:8px; font-size:1.05rem; margin-bottom:14px; }
   </style>
 </head>
 <body>
 <header>
-  <h1>Golf Betting Admin</h1>
-  <span id="headerStatus"></span>
+  <div class="logo">
+    <svg class="mark" viewBox="0 0 32 32" fill="none">
+      <rect x="2" y="2" width="28" height="28" rx="9" fill="var(--accent)"/>
+      <path d="M10.5 21.5L21.5 10.5" stroke="var(--accent-ink)" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="12.4" cy="11.4" r="2.1" fill="var(--accent-ink)"/><circle cx="19.6" cy="20.6" r="2.1" fill="var(--accent-ink)"/>
+    </svg>
+    <span>SideBet</span>
+  </div>
+  <span class="host-tag">Host</span>
 </header>
-<nav>
-  <button class="active" onclick="switchTab('tournament')">Tournament</button>
-  <button onclick="switchTab('players')">Players</button>
-  <button onclick="switchTab('betting')">Betting</button>
-  <button onclick="switchTab('scores')">Scores</button>
-  <button onclick="switchTab('results')">Results</button>
-  <button onclick="switchTab('holes')">Holes</button>
-  <button onclick="switchTab('pvp')">PvP</button>
+<nav id="nav">
+  <button data-tab="event" class="active" onclick="switchTab('event')">Event</button>
+  <button data-tab="contestants" onclick="switchTab('contestants')">Contestants</button>
+  <button data-tab="markets" onclick="switchTab('markets')">Pools</button>
+  <button data-tab="settle" onclick="switchTab('settle')">Settle</button>
 </nav>
-
-<div id="tab-tournament" class="tab active">
-  <div id="tournamentContent"></div>
-</div>
-<div id="tab-players" class="tab">
-  <div id="playersContent"></div>
-</div>
-<div id="tab-betting" class="tab">
-  <div id="bettingContent"></div>
-</div>
-<div id="tab-scores" class="tab">
-  <div id="scoresContent"></div>
-</div>
-<div id="tab-results" class="tab">
-  <div id="resultsContent"></div>
-</div>
-<div id="tab-holes" class="tab">
-  <div id="holesContent"></div>
-</div>
-<div id="tab-pvp" class="tab">
-  <div id="pvpContent"></div>
-</div>
+<main id="view"></main>
+<div class="toast" id="toast"></div>
 
 <script>
-let state = null;
-let activeTab = 'tournament';
+let data = null;            // active event snapshot from /api/event
+let templates = [];
+let activeTab = 'event';
+let newTemplate = 'racing';
+let newAccent = 'emerald';
 
-// ─── Admin PIN ────────────────────────────────────────────────────────────────
-const PIN_KEY = 'golfAdminPin';
+const PIN_KEY = 'sidebetPin';
+const ACCENTS = { emerald:'#34d399', cyan:'#22d3ee', violet:'#a78bfa', rose:'#fb7185', amber:'#fbbf24', blue:'#60a5fa' };
+const ACCENT_INK = { emerald:'#04140d', cyan:'#04181c', violet:'#150a26', rose:'#2a0a10', amber:'#241803', blue:'#06182e' };
+const TYPE_LABEL = { win:'Winner takes pool', topn:'Top N share', h2h:'Head to head' };
+
 function getPin() { return sessionStorage.getItem(PIN_KEY) || ''; }
-
-function showPinOverlay() {
-  if (document.getElementById('pinOverlay')) return;
-  document.body.insertAdjacentHTML('afterbegin', `
-    <div id="pinOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;">
-      <div style="background:white;border-radius:8px;padding:24px;max-width:300px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-        <h2 style="font-size:1rem;font-weight:700;color:#1a5c1a;margin-bottom:16px;">Admin PIN</h2>
-        <div id="pinMsg"></div>
-        <input id="pinInput" type="password" style="width:100%;border:1px solid #c8d8c8;border-radius:6px;padding:9px 12px;font-size:1rem;margin-bottom:12px;" placeholder="Enter PIN" onkeydown="if(event.key==='Enter')submitPin()">
-        <button onclick="submitPin()" style="width:100%;padding:10px;background:#2e7d2e;color:white;border:none;border-radius:6px;font-size:0.9rem;font-weight:500;cursor:pointer;">Enter</button>
-      </div>
-    </div>`);
-  setTimeout(() => { const el = document.getElementById('pinInput'); if (el) el.focus(); }, 50);
-}
-
-async function submitPin() {
-  const pin = document.getElementById('pinInput').value;
-  try {
-    const r = await fetch((window.API_BASE || '') + '/api/admin/tournaments', {
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Pin': pin }
-    });
-    if (r.status === 401) {
-      document.getElementById('pinMsg').innerHTML = `<div style="padding:7px 10px;border-radius:6px;background:#ffebee;color:#b71c1c;font-size:0.85rem;margin-bottom:10px;">Incorrect PIN</div>`;
-      return;
-    }
-    sessionStorage.setItem(PIN_KEY, pin);
-    document.getElementById('pinOverlay').remove();
-    loadState();
-  } catch(e) {
-    sessionStorage.setItem(PIN_KEY, pin);
-    document.getElementById('pinOverlay').remove();
-    loadState();
-  }
-}
-
-function switchTab(name) {
-  activeTab = name;
-  document.querySelectorAll('nav button').forEach((b, i) => {
-    const tabs = ['tournament','players','betting','scores','results','holes','pvp'];
-    b.classList.toggle('active', tabs[i] === name);
-  });
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  renderTab();
-}
-
-function fmt(n) { return '$' + Number(n).toFixed(2); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function money(n) { const c = data&&data.event?data.event.currency:'$'; return c + Number(n).toFixed(2); }
+function applyAccent(k) { const r=document.documentElement.style; r.setProperty('--accent',ACCENTS[k]||ACCENTS.emerald); r.setProperty('--accent-ink',ACCENT_INK[k]||'#04140d'); }
+function toast(m, err) { const t=document.getElementById('toast'); t.textContent=m; t.className='toast show'+(err?' err':''); clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',2200); }
 
 async function api(method, url, body) {
   const pin = getPin();
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  const opts = { method, headers: { 'Content-Type':'application/json' } };
   if (pin) opts.headers['X-Admin-Pin'] = pin;
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch((window.API_BASE || '') + url, opts);
-  const data = await r.json();
-  if (r.status === 401) { sessionStorage.removeItem(PIN_KEY); showPinOverlay(); throw new Error('PIN required'); }
-  if (!r.ok) throw new Error(data.error || 'Request failed');
-  return data;
+  const r = await fetch((window.API_BASE||'') + url, opts);
+  const j = await r.json();
+  if (r.status === 401) { sessionStorage.removeItem(PIN_KEY); showPin(); throw new Error('PIN required'); }
+  if (!r.ok) throw new Error(j.error || 'Request failed');
+  return j;
 }
 
-async function loadState() {
+// ─── PIN gate ───────────────────────────────────────────────────────────────
+function showPin() {
+  if (document.getElementById('pinOverlay')) return;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="overlay" id="pinOverlay">
+      <div class="box">
+        <h2>🔒 Host PIN</h2>
+        <div id="pinMsg"></div>
+        <div class="fg"><input id="pinInput" type="password" inputmode="numeric" placeholder="Enter PIN" autocomplete="off"></div>
+        <button class="btn btn-primary" onclick="submitPin()">Unlock</button>
+        <div class="hint">Set the <code>ADMIN_PIN</code> env var on your server to enable this. Leave it unset for open access during local testing.</div>
+      </div>
+    </div>`);
+  setTimeout(() => { const i=document.getElementById('pinInput'); if(i){i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter')submitPin();});} }, 50);
+}
+async function submitPin() {
+  const pin = document.getElementById('pinInput').value;
   try {
-    state = await api('GET', '/api/state');
-    renderAll();
-  } catch(e) { console.error(e); }
+    const r = await fetch((window.API_BASE||'') + '/api/admin/events', { headers: { 'X-Admin-Pin': pin } });
+    if (r.status === 401) { document.getElementById('pinMsg').innerHTML = `<div class="msg err">Incorrect PIN</div>`; return; }
+    sessionStorage.setItem(PIN_KEY, pin);
+    document.getElementById('pinOverlay').remove();
+    boot();
+  } catch (e) { sessionStorage.setItem(PIN_KEY, pin); document.getElementById('pinOverlay').remove(); boot(); }
 }
 
-function renderAll() {
-  const t = state && state.tournament;
-  const el = document.getElementById('headerStatus');
-  if (t) {
-    el.textContent = t.name + ' — ' + (t.status.charAt(0).toUpperCase() + t.status.slice(1));
-  } else {
-    el.textContent = 'No Active Tournament';
-  }
+// ─── Load ───────────────────────────────────────────────────────────────────
+async function load() {
+  data = await api('GET', '/api/event');
+  if (data.event) applyAccent(data.event.accent);
   renderTab();
 }
+function switchTab(t) { activeTab = t; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t)); renderTab(); }
+function renderTab() { ({ event:renderEvent, contestants:renderContestants, markets:renderMarkets, settle:renderSettle }[activeTab] || renderEvent)(); }
 
-function renderTab() {
-  switch(activeTab) {
-    case 'tournament': renderTournament(); break;
-    case 'players': renderPlayers(); break;
-    case 'betting': renderBetting(); break;
-    case 'scores': renderScores(); break;
-    case 'results': renderResults(); break;
-    case 'holes': renderHoles(); break;
-    case 'pvp': renderPvp(); break;
-  }
-}
-
-// ─── Tournament Tab ───────────────────────────────────────────────────────────
-function renderTournament() {
-  const el = document.getElementById('tournamentContent');
-  const t = state && state.tournament;
-
-  if (!t) {
-    el.innerHTML = `
-      <div class="card">
-        <h2>Create New Tournament</h2>
-        <div id="createMsg"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Name</label><input id="tName" placeholder="Spring Classic"></div>
-          <div class="form-group"><label>Course</label><input id="tCourse" placeholder="Pebble Beach"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Date</label><input id="tDate" type="date"></div>
-          <div class="form-group"><label>Rounds</label><input id="tRounds" type="number" value="2" min="1" max="4"></div>
-          <div class="form-group"><label>HCP Allowance %</label><input id="tHcp" type="number" value="100" min="0" max="100"></div>
-        </div>
-        <button class="btn btn-primary" onclick="createTournament()">Create Tournament</button>
-      </div>`;
+// ─── Event tab ──────────────────────────────────────────────────────────────
+function renderEvent() {
+  const ev = data && data.event;
+  const v = document.getElementById('view');
+  if (!ev) {
+    v.innerHTML = createEventForm();
+    syncTemplatePick();
     return;
   }
-
-  const statusBadge = `<span class="badge badge-${t.status}">${t.status.toUpperCase()}</span>`;
-  el.innerHTML = `
+  const statusPill = `<span class="pill ${ev.status}">${ev.status}</span>`;
+  v.innerHTML = `
     <div class="card">
-      <h2>Current Tournament ${statusBadge}</h2>
-      <div id="editMsg"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Name</label><input id="eName" value="${esc(t.name)}"></div>
-        <div class="form-group"><label>Course</label><input id="eCourse" value="${esc(t.course)}"></div>
+      <h2>Current event ${statusPill}</h2>
+      <div class="grid2">
+        <div class="fg"><label>Name</label><input id="eName" value="${esc(ev.name)}"></div>
+        <div class="fg"><label>Emoji</label><input id="eEmoji" value="${esc(ev.emoji)}" maxlength="4"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Date</label><input id="eDate" type="date" value="${esc(t.date)}"></div>
-        <div class="form-group"><label>Rounds</label><input id="eRounds" type="number" value="${t.rounds}" min="1" max="4"></div>
-        <div class="form-group"><label>HCP Allowance %</label><input id="eHcp" type="number" value="${t.hcp_allowance}" min="0" max="100"></div>
+      <div class="grid2">
+        <div class="fg"><label>Venue</label><input id="eVenue" value="${esc(ev.venue)}"></div>
+        <div class="fg"><label>Date</label><input id="eDate" value="${esc(ev.date)}" placeholder="Sat Jun 14"></div>
       </div>
-      <button class="btn btn-primary" onclick="saveTournament()">Save Changes</button>
+      <div class="grid3">
+        <div class="fg"><label>Currency</label><input id="eCur" value="${esc(ev.currency)}" maxlength="3"></div>
+        <div class="fg"><label>Min bet</label><input id="eMin" type="number" value="${ev.min_bet}" min="0"></div>
+        <div class="fg"><label>House cut %</label><input id="eRake" type="number" value="${ev.rake_pct}" min="0" max="50"></div>
+      </div>
+      <div class="fg"><label>Accent</label><div class="accent-row" id="editAccent"></div></div>
+      <button class="btn btn-ghost" onclick="saveEvent()">Save changes</button>
+    </div>
+
+    <div class="card">
+      <h2>Betting control</h2>
+      <div class="btn-row">
+        ${ev.status !== 'open' ? `<button class="btn btn-primary" onclick="setStatus('open')">▶ Open betting</button>` : `<button class="btn btn-ghost" onclick="setStatus('closed')">⏸ Close betting</button>`}
+      </div>
+      <div class="hint">Open lets guests place bets. Close freezes all pools. Settle individual pools in the Settle tab to pay out.</div>
+    </div>
+
+    <div class="card">
+      <h2>Danger zone</h2>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="resetEvent()">↺ Clear all bets</button>
+        <button class="btn btn-danger" onclick="deleteEvent(${ev.id})">🗑 Delete event</button>
+      </div>
+      <div class="hint">Clearing wipes every bet & result but keeps contestants and pools. Deleting removes the event entirely and a fresh one can be created.</div>
     </div>`;
+  renderAccentRow('editAccent', ev.accent, k => api('PUT','/api/admin/event',{accent:k}).then(()=>{applyAccent(k);load();}));
 }
 
-async function createTournament() {
-  try {
-    await api('POST', '/api/admin/tournament', {
-      name: document.getElementById('tName').value,
-      course: document.getElementById('tCourse').value,
-      date: document.getElementById('tDate').value,
-      rounds: parseInt(document.getElementById('tRounds').value),
-      hcp_allowance: parseInt(document.getElementById('tHcp').value)
-    });
-    await loadState();
-  } catch(e) {
-    document.getElementById('createMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
-  }
-}
-
-async function saveTournament() {
-  try {
-    await api('PUT', '/api/admin/tournament', {
-      name: document.getElementById('eName').value,
-      course: document.getElementById('eCourse').value,
-      date: document.getElementById('eDate').value,
-      rounds: parseInt(document.getElementById('eRounds').value),
-      hcp_allowance: parseInt(document.getElementById('eHcp').value)
-    });
-    document.getElementById('editMsg').innerHTML = `<div class="msg msg-success">Saved.</div>`;
-    await loadState();
-  } catch(e) {
-    document.getElementById('editMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
-  }
-}
-
-// ─── Players Tab ──────────────────────────────────────────────────────────────
-function renderPlayers() {
-  const el = document.getElementById('playersContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-
-  const players = state.players || [];
-  const hcp = t.hcp_allowance;
-  let rows = players.map(p => {
-    const eff = Math.round(p.course_handicap * hcp / 100);
-    return `<tr>
-      <td>${esc(p.name)}</td>
-      <td>${p.handicap_index}</td>
-      <td>${p.course_handicap}</td>
-      <td>${eff}</td>
-      <td>
-        <button class="btn btn-outline btn-sm" onclick="editPlayer(${p.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePlayer(${p.id})">Delete</button>
-      </td>
-    </tr>`;
-  }).join('');
-
-  el.innerHTML = `
+function createEventForm() {
+  return `
     <div class="card">
-      <h2>Add Player</h2>
-      <div id="addPlayerMsg"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Name</label><input id="pName" placeholder="Player name"></div>
-        <div class="form-group"><label>Handicap Index</label><input id="pHcpIdx" type="number" value="0" step="0.1"></div>
-        <div class="form-group"><label>Course Handicap</label><input id="pCourseHcp" type="number" value="0"></div>
-        <div style="display:flex;align-items:flex-end;"><button class="btn btn-primary" onclick="addPlayer()">Add Player</button></div>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Players (HCP Allowance: ${hcp}%)</h2>
-      ${players.length === 0 ? '<div class="no-data">No players added yet.</div>' : `
-      <table>
-        <thead><tr><th>Name</th><th>HCP Index</th><th>Course HCP</th><th>Eff. HCP</th><th>Actions</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`}
-    </div>`;
-}
-
-async function addPlayer() {
-  try {
-    await api('POST', '/api/admin/players', {
-      name: document.getElementById('pName').value,
-      handicap_index: parseFloat(document.getElementById('pHcpIdx').value) || 0,
-      course_handicap: parseInt(document.getElementById('pCourseHcp').value) || 0
-    });
-    await loadState();
-  } catch(e) {
-    document.getElementById('addPlayerMsg').innerHTML = `<div class="msg msg-error">${esc(e.message)}</div>`;
-  }
-}
-
-function editPlayer(id) {
-  const p = state.players.find(x => x.id === id);
-  if (!p) return;
-  const name = prompt('Name:', p.name);
-  if (name === null) return;
-  const hcpIdx = prompt('Handicap Index:', p.handicap_index);
-  if (hcpIdx === null) return;
-  const courseHcp = prompt('Course Handicap:', p.course_handicap);
-  if (courseHcp === null) return;
-  api('PUT', `/api/admin/players/${id}`, { name, handicap_index: parseFloat(hcpIdx), course_handicap: parseInt(courseHcp) })
-    .then(() => loadState()).catch(e => alert(e.message));
-}
-
-async function deletePlayer(id) {
-  if (!confirm('Delete this player?')) return;
-  try { await api('DELETE', `/api/admin/players/${id}`); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-// ─── Betting Tab ──────────────────────────────────────────────────────────────
-function renderBetting() {
-  const el = document.getElementById('bettingContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-
-  const bets = state.bets || [];
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-
-  const betRows = [...bets].reverse().map(b => `<tr>
-    <td>${esc(b.bettor_name)}</td>
-    <td><span class="badge badge-${b.type === 'win' ? 'open' : 'setup'}">${b.type.toUpperCase()}</span></td>
-    <td>${esc(pMap[b.player_id] ? pMap[b.player_id].name : '?')}</td>
-    <td>${fmt(b.amount)}</td>
-    <td>${new Date(b.timestamp).toLocaleString()}</td>
-  </tr>`).join('');
-
-  const canOpen = t.status === 'setup' || t.status === 'closed';
-  const canClose = t.status === 'open';
-
-  el.innerHTML = `
-    <div class="card">
-      <h2>Betting Status</h2>
-      <p style="margin-bottom:12px;">Current status: <span class="badge badge-${t.status}">${t.status.toUpperCase()}</span></p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        ${canOpen ? `<button class="btn btn-primary" onclick="setStatus('open')">Open Betting</button>` : ''}
-        ${canClose ? `<button class="btn btn-secondary" onclick="setStatus('closed')">Close Betting</button>` : ''}
-      </div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="val">${bets.length}</div><div class="lbl">Total Bets</div></div>
-      <div class="stat-box"><div class="val">${fmt(state.winPool)}</div><div class="lbl">Win Pool</div></div>
-      <div class="stat-box"><div class="val">${fmt(state.showPool)}</div><div class="lbl">Show Pool</div></div>
-      <div class="stat-box"><div class="val">${fmt((state.winPool||0)+(state.showPool||0))}</div><div class="lbl">Total Wagered</div></div>
-    </div>
-    <div class="card">
-      <h2>Bet History</h2>
-      ${bets.length === 0 ? '<div class="no-data">No bets placed yet.</div>' : `
-      <table>
-        <thead><tr><th>Bettor</th><th>Type</th><th>Player</th><th>Amount</th><th>Time</th></tr></thead>
-        <tbody>${betRows}</tbody>
-      </table>`}
-    </div>
-    <div class="card" style="border-color:#ffcdd2">
-      <h2 style="color:var(--danger)">Danger Zone</h2>
-      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">Reset all bets, scores, and results for this tournament. Sets status back to open.</p>
-      <button class="btn btn-danger" onclick="resetTournament()">Reset Tournament Data</button>
-    </div>`;
-}
-
-async function setStatus(status) {
-  try { await api('POST', '/api/admin/status', { status }); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-async function resetTournament() {
-  if (!confirm('This will delete ALL bets, scores, results, holes, and PvP data for this tournament. Are you sure?')) return;
-  if (!confirm('FINAL CONFIRMATION: This cannot be undone.')) return;
-  try { await api('POST', '/api/admin/reset'); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-// ─── Scores Tab ───────────────────────────────────────────────────────────────
-function renderScores() {
-  const el = document.getElementById('scoresContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-  const players = state.players || [];
-  const standings = state.standings || [];
-
-  // Build score inputs for each round
-  const rounds = [];
-  for (let r = 1; r <= t.rounds; r++) {
-    const inputs = players.map(p => {
-      // Find existing score from standings
-      let gross = '';
-      const s = standings.find(x => x.player && x.player.id === p.id);
-      if (s) {
-        const rn = s.roundNets.find(x => x.round === r);
-        if (rn && rn.gross != null) gross = rn.gross;
-      }
-      return `<tr>
-        <td>${esc(p.name)}</td>
-        <td><input type="number" class="score-input" id="score_r${r}_p${p.id}" value="${gross}" style="width:70px;text-align:center;" placeholder="—"></td>
-      </tr>`;
-    }).join('');
-    rounds.push(`
-      <div class="card">
-        <h2>Round ${r}</h2>
-        <table>
-          <thead><tr><th>Player</th><th>Gross Score</th></tr></thead>
-          <tbody>${inputs}</tbody>
-        </table>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button class="btn btn-primary" onclick="saveScores(${r})">Save R${r}</button>
-          <button class="btn btn-outline" onclick="clearScores(${r})">Clear R${r}</button>
+      <h2>✨ New event</h2>
+      <div class="fg"><label>Start from a template</label>
+        <div class="tmpl-grid" id="tmplGrid">
+          ${templates.map(t => `<button class="tmpl" data-id="${t.id}" onclick="pickTemplate('${t.id}','${t.accent}')">
+            <div class="e">${t.emoji}</div><div class="n">${esc(t.label)}</div><div class="b">${esc(t.blurb)}</div></button>`).join('')}
         </div>
-      </div>`);
-  }
-
-  // Standings table
-  const standRows = standings.map(s => {
-    if (!s.hasScores) return `<tr style="opacity:0.5"><td>${esc(s.player.name)}</td><td colspan="${t.rounds + 2}">No scores</td></tr>`;
-    const netCols = s.roundNets.map(rn => `<td>${rn.net != null ? rn.net : '—'}</td>`).join('');
-    return `<tr>
-      <td>${s.position != null ? s.position : '—'}</td>
-      <td>${esc(s.player.name)} <small style="color:var(--muted)">(${s.effHcp})</small></td>
-      ${netCols}
-      <td><strong>${s.totalNet != null ? s.totalNet : '—'}</strong></td>
-    </tr>`;
-  }).join('');
-
-  const netHeaders = Array.from({length: t.rounds}, (_, i) => `<th>R${i+1} Net</th>`).join('');
-
-  el.innerHTML = `
-    <div class="scores-grid">${rounds.join('')}</div>
-    <div class="card">
-      <h2>Net Standings</h2>
-      ${standings.length === 0 ? '<div class="no-data">No players.</div>' : `
-      <table>
-        <thead><tr><th>#</th><th>Player (Eff.HCP)</th>${netHeaders}<th>Total Net</th></tr></thead>
-        <tbody>${standRows}</tbody>
-      </table>`}
-    </div>`;
-}
-
-async function saveScores(round) {
-  const t = state.tournament;
-  const players = state.players || [];
-  const scores = {};
-  for (const p of players) {
-    const input = document.getElementById(`score_r${round}_p${p.id}`);
-    if (input && input.value !== '') scores[p.id] = parseInt(input.value);
-  }
-  try { await api('POST', '/api/admin/scores', { round, scores }); await loadState(); alert(`Round ${round} scores saved.`); }
-  catch(e) { alert(e.message); }
-}
-
-async function clearScores(round) {
-  if (!confirm(`Clear all Round ${round} scores?`)) return;
-  try { await api('POST', '/api/admin/scores/clear', { round }); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-// ─── Results Tab ──────────────────────────────────────────────────────────────
-function renderResults() {
-  const el = document.getElementById('resultsContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-  const players = state.players || [];
-  const results = state.results;
-
-  const options = players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-
-  let currentResults = '';
-  if (results) {
-    const pMap = {};
-    for (const p of players) pMap[p.id] = p;
-    currentResults = `
-      <div class="msg msg-success" style="margin-bottom:12px;">
-        Results submitted: 1st — ${pMap[results.first_player_id] ? esc(pMap[results.first_player_id].name) : '?'},
-        2nd — ${pMap[results.second_player_id] ? esc(pMap[results.second_player_id].name) : '?'},
-        3rd — ${pMap[results.third_player_id] ? esc(pMap[results.third_player_id].name) : '?'}
-      </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="card">
-      <h2>Submit Results</h2>
-      ${currentResults}
-      <div class="form-row">
-        <div class="form-group"><label>1st Place</label><select id="r1st"><option value="">— Select —</option>${options}</select></div>
-        <div class="form-group"><label>2nd Place</label><select id="r2nd"><option value="">— Select —</option>${options}</select></div>
-        <div class="form-group"><label>3rd Place</label><select id="r3rd"><option value="">— Select —</option>${options}</select></div>
       </div>
-      ${results ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Pre-filled with existing results.</p>` : ''}
-      <button class="btn btn-secondary" onclick="submitResults()">Submit Results & Finalize</button>
+      <div class="grid2">
+        <div class="fg"><label>Event name</label><input id="cName" placeholder="Saturday Dog Dash"></div>
+        <div class="fg"><label>Venue</label><input id="cVenue" placeholder="The backyard"></div>
+      </div>
+      <div class="grid3">
+        <div class="fg"><label>Date</label><input id="cDate" placeholder="Sat Jun 14"></div>
+        <div class="fg"><label>Currency</label><input id="cCur" value="$" maxlength="3"></div>
+        <div class="fg"><label>Min bet</label><input id="cMin" type="number" value="1" min="0"></div>
+      </div>
+      <div class="fg"><label>Accent</label><div class="accent-row" id="createAccent"></div></div>
+      <button class="btn btn-primary" onclick="createEvent()">Create event</button>
+      <div class="hint">Templates seed example contestants and pools so you're ready in seconds — edit or delete anything after.</div>
     </div>`;
-
-  if (results) {
-    document.getElementById('r1st').value = results.first_player_id || '';
-    document.getElementById('r2nd').value = results.second_player_id || '';
-    document.getElementById('r3rd').value = results.third_player_id || '';
-  }
 }
-
-async function submitResults() {
-  const first = document.getElementById('r1st').value;
-  const second = document.getElementById('r2nd').value;
-  const third = document.getElementById('r3rd').value;
-  if (!first) { alert('1st place is required.'); return; }
-  if (!confirm('Submit results and set tournament to FINAL? This will calculate all payouts.')) return;
-  try { await api('POST', '/api/results', { first, second, third }); await loadState(); alert('Results submitted!'); }
-  catch(e) { alert(e.message); }
+function pickTemplate(id, accent) { newTemplate = id; newAccent = accent; syncTemplatePick(); renderAccentRow('createAccent', newAccent, k=>{newAccent=k;syncTemplatePick();}); }
+function syncTemplatePick() {
+  document.querySelectorAll('#tmplGrid .tmpl').forEach(b => b.classList.toggle('sel', b.dataset.id === newTemplate));
+  renderAccentRow('createAccent', newAccent, k=>{newAccent=k;});
 }
+function renderAccentRow(id, current, onPick) {
+  const el = document.getElementById(id); if (!el) return;
+  el.innerHTML = Object.entries(ACCENTS).map(([k,hex]) => `<div class="swatch ${k===current?'sel':''}" data-k="${k}" style="background:${hex}"></div>`).join('');
+  el.querySelectorAll('.swatch').forEach(s => s.onclick = () => { el.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel'); onPick(s.dataset.k); });
+}
+async function createEvent() {
+  const name = document.getElementById('cName').value.trim();
+  if (!name) return toast('Give it a name', true);
+  try {
+    await api('POST', '/api/admin/event', {
+      name, template: newTemplate, accent: newAccent,
+      venue: document.getElementById('cVenue').value.trim(),
+      date: document.getElementById('cDate').value.trim(),
+      currency: document.getElementById('cCur').value.trim() || '$',
+      min_bet: parseFloat(document.getElementById('cMin').value) || 1,
+    });
+    toast('Event created 🎉');
+    await load();
+  } catch (e) { toast(e.message, true); }
+}
+async function saveEvent() {
+  try {
+    await api('PUT', '/api/admin/event', {
+      name: document.getElementById('eName').value.trim(),
+      emoji: document.getElementById('eEmoji').value.trim(),
+      venue: document.getElementById('eVenue').value.trim(),
+      date: document.getElementById('eDate').value.trim(),
+      currency: document.getElementById('eCur').value.trim() || '$',
+      min_bet: parseFloat(document.getElementById('eMin').value) || 1,
+      rake_pct: parseFloat(document.getElementById('eRake').value) || 0,
+    });
+    toast('Saved');
+    await load();
+  } catch (e) { toast(e.message, true); }
+}
+async function setStatus(s) { try { await api('POST','/api/admin/event/status',{status:s}); toast(s==='open'?'Betting open ▶':'Betting closed'); await load(); } catch(e){ toast(e.message,true);} }
+async function resetEvent() { if(!confirm('Clear all bets and results? Contestants and pools stay.'))return; try{ await api('POST','/api/admin/event/reset'); toast('Bets cleared'); await load(); }catch(e){toast(e.message,true);} }
+async function deleteEvent(id) { if(!confirm('Delete this event entirely? This cannot be undone.'))return; try{ await api('DELETE','/api/admin/event/'+id); toast('Event deleted'); await load(); }catch(e){toast(e.message,true);} }
 
-// ─── Holes Tab ────────────────────────────────────────────────────────────────
-function renderHoles() {
-  const el = document.getElementById('holesContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-
-  const holes = state.holes || [];
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-
-  let html = '';
-  for (let round = 1; round <= t.rounds; round++) {
-    const roundHoles = holes.filter(h => h.round === round);
-    const cards = roundHoles.map(h => {
-      const statusBadge = `<span class="badge badge-${h.status === 'open' ? 'open' : h.status === 'final' ? 'final' : 'locked'}">${h.status.toUpperCase()}</span>`;
-      let actions = '';
-      let extra = '';
-
-      if (h.status === 'locked') {
-        actions = `<button class="btn btn-primary btn-sm" onclick="unlockHole(${round},${h.hole})">Open</button>`;
-      } else if (h.status === 'open') {
-        actions = `
-          <button class="btn btn-outline btn-sm" onclick="lockHole(${round},${h.hole})">Lock</button>
-          <button class="btn btn-secondary btn-sm" onclick="toggleHoleResult(${round},${h.hole})">Set Result</button>`;
-        extra = `<div id="holeResultForm_${round}_${h.hole}" style="display:none" class="inline-form">
-          ${players.map(p => `<label><input type="radio" name="hr_${round}_${h.hole}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <button class="btn btn-primary btn-sm" onclick="setHoleResult(${round},${h.hole},false)">Confirm Winner</button>
-            <button class="btn btn-outline btn-sm" onclick="setHoleResult(${round},${h.hole},true)">Push</button>
+// ─── Contestants tab ──────────────────────────────────────────────────────────
+function renderContestants() {
+  const v = document.getElementById('view');
+  if (!data.event) { v.innerHTML = noEvent(); return; }
+  const cs = data.contestants || [];
+  v.innerHTML = `
+    <div class="card">
+      <h2>Add contestant</h2>
+      <div class="grid2">
+        <div class="fg"><label>Emoji</label><input id="ncEmoji" placeholder="🐕" maxlength="4"></div>
+        <div class="fg"><label>Name</label><input id="ncName" placeholder="Rocket"></div>
+      </div>
+      <div class="fg"><label>Subtitle (optional)</label><input id="ncSub" placeholder="Lane 1 · 3yo greyhound"></div>
+      <button class="btn btn-primary" onclick="addContestant()">Add contestant</button>
+    </div>
+    <div class="card">
+      <h2>Lineup <span class="tag">${cs.length}</span></h2>
+      ${cs.length ? cs.map(c => `
+        <div class="listitem">
+          <div class="ava">${c.emoji||esc(c.name[0].toUpperCase())}</div>
+          <div class="mid"><div class="t">${esc(c.name)}</div>${c.subtitle?`<div class="s">${esc(c.subtitle)}</div>`:''}</div>
+          <div class="acts">
+            <button class="icon-btn" onclick="editContestant(${c.id})">✎</button>
+            <button class="icon-btn danger" onclick="delContestant(${c.id})">🗑</button>
           </div>
-        </div>`;
-      } else if (h.status === 'final') {
-        const winner = h.is_push ? 'PUSH' : (pMap[h.winner_player_id] ? pMap[h.winner_player_id].name : '?');
-        extra = `<div style="font-size:0.8rem;margin-top:6px;">Winner: <strong>${esc(winner)}</strong></div>`;
-        actions = `<button class="btn btn-outline btn-sm" onclick="unlockHole(${round},${h.hole})">Reset</button>`;
-      }
-
-      const poolParts = Object.entries(h.playerPools || {}).map(([pid, amt]) => `${pMap[pid] ? esc(pMap[pid].name) : '?'}: ${fmt(amt)}`).join(', ');
-
-      return `<div class="hole-card">
-        <h4>Hole ${h.hole} ${statusBadge}</h4>
-        <div class="pool">${fmt(h.pool || 0)}${poolParts ? ' — ' + poolParts : ''}</div>
-        <div class="hole-actions">${actions}</div>
-        ${extra}
-      </div>`;
-    }).join('');
-
-    html += `<div class="round-section">
-      <h3>Round ${round}</h3>
-      <div class="hole-grid">${cards}</div>
+        </div>`).join('') : '<div class="empty"><div class="e">🐾</div>No contestants yet. Add a few above.</div>'}
     </div>`;
-  }
-
-  el.innerHTML = html || '<div class="no-data">No hole data.</div>';
 }
-
-function toggleHoleResult(round, hole) {
-  const el = document.getElementById(`holeResultForm_${round}_${hole}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+async function addContestant() {
+  const name = document.getElementById('ncName').value.trim();
+  if (!name) return toast('Name required', true);
+  try {
+    await api('POST','/api/admin/contestant',{ name, emoji:document.getElementById('ncEmoji').value.trim(), subtitle:document.getElementById('ncSub').value.trim() });
+    toast('Added '+name); await load();
+  } catch(e){ toast(e.message,true); }
 }
-
-async function unlockHole(round, hole) {
-  try { await api('POST', '/api/admin/holes/unlock', { round, hole }); await loadState(); }
-  catch(e) { alert(e.message); }
+async function editContestant(id) {
+  const c = data.contestants.find(x=>x.id===id);
+  const name = prompt('Name:', c.name); if (name===null) return;
+  const emoji = prompt('Emoji:', c.emoji); if (emoji===null) return;
+  const subtitle = prompt('Subtitle:', c.subtitle); if (subtitle===null) return;
+  try { await api('PUT','/api/admin/contestant/'+id,{ name:name.trim(), emoji:emoji.trim(), subtitle:subtitle.trim() }); toast('Updated'); await load(); } catch(e){ toast(e.message,true); }
 }
+async function delContestant(id) { if(!confirm('Remove this contestant and any bets on them?'))return; try{ await api('DELETE','/api/admin/contestant/'+id); toast('Removed'); await load(); }catch(e){toast(e.message,true);} }
 
-async function lockHole(round, hole) {
-  try { await api('POST', '/api/admin/holes/lock', { round, hole }); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-async function setHoleResult(round, hole, isPush) {
-  let winner_player_id = null;
-  if (!isPush) {
-    const radios = document.querySelectorAll(`input[name="hr_${round}_${hole}"]`);
-    for (const r of radios) { if (r.checked) { winner_player_id = r.value; break; } }
-    if (!winner_player_id) { alert('Select a winner or choose Push.'); return; }
-  }
-  try { await api('POST', '/api/admin/holes/result', { round, hole, winner_player_id, is_push: isPush }); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-// ─── PvP Tab ──────────────────────────────────────────────────────────────────
-function renderPvp() {
-  const el = document.getElementById('pvpContent');
-  const t = state && state.tournament;
-  if (!t) { el.innerHTML = `<div class="no-data">No active tournament.</div>`; return; }
-
-  const matchups = state.matchups || [];
-  const players = state.players || [];
-  const pMap = {};
-  for (const p of players) pMap[p.id] = p;
-
-  const cards = matchups.map(m => {
-    const p1 = m.player1 || pMap[m.player1_id] || { name: '?' };
-    const p2 = m.player2 || pMap[m.player2_id] || { name: '?' };
-    const statusBadge = `<span class="badge badge-${m.status === 'open' ? 'open' : m.status === 'final' ? 'final' : 'closed'}">${m.status.toUpperCase()}</span>`;
-
-    let actions = '';
-    let extra = '';
-    if (m.status === 'open') {
-      actions = `
-        <button class="btn btn-secondary btn-sm" onclick="closePvp(${m.id})">Close Betting</button>
-        <button class="btn btn-primary btn-sm" onclick="togglePvpResult(${m.id})">Set Winner</button>`;
-      extra = `<div id="pvpResultForm_${m.id}" style="display:none" class="inline-form">
-        ${[p1, p2].map(p => `<label><input type="radio" name="pvpr_${m.id}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="btn btn-primary btn-sm" onclick="setPvpResult(${m.id},false)">Confirm Winner</button>
-          <button class="btn btn-outline btn-sm" onclick="setPvpResult(${m.id},true)">Push</button>
+// ─── Markets (pools) tab ──────────────────────────────────────────────────────
+function renderMarkets() {
+  const v = document.getElementById('view');
+  if (!data.event) { v.innerHTML = noEvent(); return; }
+  const cs = data.contestants || [];
+  const markets = data.markets || [];
+  v.innerHTML = `
+    <div class="card">
+      <h2>New pool</h2>
+      <div class="fg"><label>Pool name</label><input id="nmName" placeholder="Win · Race 2 · Best Dressed"></div>
+      <div class="grid2">
+        <div class="fg"><label>Type</label>
+          <select id="nmType" onchange="onTypeChange()">
+            <option value="win">Winner takes pool</option>
+            <option value="topn">Top N share</option>
+            <option value="h2h">Head to head</option>
+          </select>
         </div>
-      </div>`;
-    } else if (m.status === 'closed') {
-      actions = `<button class="btn btn-primary btn-sm" onclick="togglePvpResult(${m.id})">Set Winner</button>`;
-      extra = `<div id="pvpResultForm_${m.id}" style="display:none" class="inline-form">
-        ${[p1, p2].map(p => `<label><input type="radio" name="pvpr_${m.id}" value="${p.id}"> ${esc(p.name)}</label>`).join('')}
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="btn btn-primary btn-sm" onclick="setPvpResult(${m.id},false)">Confirm Winner</button>
-          <button class="btn btn-outline btn-sm" onclick="setPvpResult(${m.id},true)">Push</button>
-        </div>
-      </div>`;
-    } else if (m.status === 'final') {
-      const winner = m.is_push ? 'PUSH' : (pMap[m.winner_player_id] ? pMap[m.winner_player_id].name : '?');
-      extra = `<div style="font-size:0.85rem;margin-top:8px;padding:8px;background:var(--green-light);border-radius:6px;">
-        Result: <strong>${esc(winner)}</strong> &mdash;
-        ${(m.payouts||[]).filter(x => x.payout > 0 || x.refund > 0).map(x => `${esc(x.bet.bettor_name)}: ${fmt(x.payout || x.refund)}`).join(', ')}
-      </div>`;
-    }
-
-    return `<div class="pvp-card">
-      <div class="pvp-header">
-        <div class="players">${esc(p1.name)} vs ${esc(p2.name)}</div>
-        ${statusBadge}
+        <div class="fg" id="topNWrap" style="display:none"><label>How many places (N)</label><input id="nmTopN" type="number" value="3" min="2"></div>
       </div>
-      <div class="pools">${m.scoring_type.toUpperCase()} | ${esc(p1.name)}: ${fmt(m.p1Pool)} | ${esc(p2.name)}: ${fmt(m.p2Pool)} | Total: ${fmt(m.totalPool)}</div>
-      ${m.use_custom_stakes ? `<div style="font-size:0.8rem;color:var(--amber);margin-bottom:6px;">Min bet: ${fmt(m.min_bet)}</div>` : ''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</div>
-      ${extra}
+      <div class="fg" id="subsetWrap" style="display:none">
+        <label>Eligible contestants</label>
+        <div id="subsetList">${cs.map(c=>`<label class="check"><input type="checkbox" value="${c.id}"> ${c.emoji||''} ${esc(c.name)}</label>`).join('')}</div>
+        <div class="hint">Leave all unchecked to include everyone. For head-to-head, pick exactly the contenders.</div>
+      </div>
+      <button class="btn btn-primary" onclick="addMarket()">Create pool</button>
+    </div>
+    <div class="card">
+      <h2>Pools <span class="tag">${markets.length}</span></h2>
+      ${markets.length ? markets.map(marketAdminCard).join('') : '<div class="empty"><div class="e">🎯</div>No pools yet. Create one above.</div>'}
+    </div>`;
+  onTypeChange();
+}
+function marketAdminCard(mk) {
+  const statusPill = `<span class="pill ${mk.status}">${mk.status}</span>`;
+  const toggle = mk.status === 'settled' ? `<button class="btn btn-ghost btn-sm" onclick="reopenMarket(${mk.id})">Reopen</button>`
+    : mk.status === 'open' ? `<button class="btn btn-ghost btn-sm" onclick="marketStatus(${mk.id},'closed')">Close</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="marketStatus(${mk.id},'open')">Open</button>`;
+  return `<div class="market-admin">
+    <div class="mh"><span class="nm">${esc(mk.name)}</span><span class="ty">${TYPE_LABEL[mk.type]}${mk.type==='topn'?' ('+mk.top_n+')':''}</span>${statusPill}</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">${money(mk.pool)} in pool · ${(mk.bets||[]).length} bets · ${mk.eligible.length} eligible</div>
+    <div class="btn-row">${toggle}<button class="btn btn-danger btn-sm" onclick="delMarket(${mk.id})">Delete</button></div>
+  </div>`;
+}
+function onTypeChange() {
+  const t = document.getElementById('nmType'); if (!t) return;
+  document.getElementById('topNWrap').style.display = t.value === 'topn' ? '' : 'none';
+  document.getElementById('subsetWrap').style.display = t.value === 'h2h' ? '' : 'none';
+}
+async function addMarket() {
+  const name = document.getElementById('nmName').value.trim();
+  if (!name) return toast('Pool name required', true);
+  const type = document.getElementById('nmType').value;
+  const body = { name, type };
+  if (type === 'topn') body.top_n = parseInt(document.getElementById('nmTopN').value) || 3;
+  if (type === 'h2h') {
+    body.contestant_ids = [...document.querySelectorAll('#subsetList input:checked')].map(i=>parseInt(i.value));
+    if (body.contestant_ids.length < 2) return toast('Pick at least 2 contenders', true);
+  }
+  try { await api('POST','/api/admin/market',body); toast('Pool created'); await load(); } catch(e){ toast(e.message,true); }
+}
+async function marketStatus(id,s) { try{ await api('POST','/api/admin/market/'+id+'/status',{status:s}); toast('Pool '+s); await load(); }catch(e){toast(e.message,true);} }
+async function reopenMarket(id) { if(!confirm('Reopen this pool? Its result will be cleared.'))return; try{ await api('POST','/api/admin/market/'+id+'/reopen'); toast('Reopened'); await load(); }catch(e){toast(e.message,true);} }
+async function delMarket(id) { if(!confirm('Delete this pool and its bets?'))return; try{ await api('DELETE','/api/admin/market/'+id); toast('Deleted'); await load(); }catch(e){toast(e.message,true);} }
+
+// ─── Settle tab ───────────────────────────────────────────────────────────────
+function renderSettle() {
+  const v = document.getElementById('view');
+  if (!data.event) { v.innerHTML = noEvent(); return; }
+  const cMap = {}; for (const c of (data.contestants||[])) cMap[c.id] = c;
+  const markets = data.markets || [];
+  const live = markets.filter(m => m.status !== 'settled');
+  const done = markets.filter(m => m.status === 'settled');
+
+  let html = `<div class="card"><h2>Settle pools</h2><div class="hint">Enter the finishing order, then settle to lock in payouts. Winners split the pool by stake. Use Push to refund everyone.</div></div>`;
+
+  if (!markets.length) { v.innerHTML = html + `<div class="card"><div class="empty"><div class="e">🎯</div>No pools to settle.</div></div>`; return; }
+
+  html += live.map(mk => {
+    const places = mk.type === 'topn' ? mk.top_n : 1;
+    const opts = mk.eligible.map(cid => { const c = cMap[cid]; return `<option value="${cid}">${c?(c.emoji+' '+c.name):cid}</option>`; }).join('');
+    const rankRows = Array.from({length:places}, (_,i) => `
+      <div class="rank-row"><div class="num">${i+1}</div>
+        <select id="rank_${mk.id}_${i}"><option value="">— pick —</option>${opts}</select></div>`).join('');
+    return `<div class="card">
+      <h2>${esc(mk.name)} <span class="pill ${mk.status}">${mk.status}</span></h2>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${money(mk.pool)} pool · ${(mk.bets||[]).length} bets</div>
+      ${rankRows}
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-primary" onclick="settleMarket(${mk.id},${places})">Settle & pay out</button>
+        <button class="btn btn-ghost" onclick="pushMarket(${mk.id})">Push (refund)</button>
+      </div>
     </div>`;
   }).join('');
 
-  el.innerHTML = cards || '<div class="no-data">No matchups in this tournament.</div>';
-}
-
-function togglePvpResult(id) {
-  const el = document.getElementById(`pvpResultForm_${id}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-async function closePvp(id) {
-  try { await api('POST', `/api/admin/pvp/${id}/close`); await loadState(); }
-  catch(e) { alert(e.message); }
-}
-
-async function setPvpResult(id, isPush) {
-  let winner_player_id = null;
-  if (!isPush) {
-    const radios = document.querySelectorAll(`input[name="pvpr_${id}"]`);
-    for (const r of radios) { if (r.checked) { winner_player_id = r.value; break; } }
-    if (!winner_player_id) { alert('Select a winner or choose Push.'); return; }
+  if (done.length) {
+    html += `<div class="card"><h2>Settled <span class="tag">${done.length}</span></h2>` + done.map(mk => {
+      const winners = (mk.results||[]).filter(r=>r.rank<=(mk.type==='topn'?mk.top_n:1)).map(r=>cMap[r.contestant_id]).filter(Boolean);
+      const label = mk.is_push ? 'Push — refunded' : winners.map(c=>`${c.emoji||''} ${esc(c.name)}`).join(', ');
+      return `<div class="listitem"><div class="ava">🏆</div><div class="mid"><div class="t">${esc(mk.name)}</div><div class="s">${label} · ${money(mk.pool)}</div></div>
+        <button class="icon-btn" onclick="reopenMarket(${mk.id})">↺</button></div>`;
+    }).join('') + `</div>`;
   }
-  try { await api('POST', `/api/admin/pvp/${id}/result`, { winner_player_id, is_push: isPush }); await loadState(); }
-  catch(e) { alert(e.message); }
+  v.innerHTML = html;
 }
+async function settleMarket(id, places) {
+  const ranks = [];
+  for (let i=0;i<places;i++) {
+    const sel = document.getElementById(`rank_${id}_${i}`);
+    if (sel && sel.value) ranks.push({ contestant_id: parseInt(sel.value), rank: i+1 });
+  }
+  if (!ranks.length) return toast('Pick at least the winner', true);
+  const ids = ranks.map(r=>r.contestant_id);
+  if (new Set(ids).size !== ids.length) return toast('Each place must be a different contestant', true);
+  try { await api('POST','/api/admin/market/'+id+'/result',{ ranks }); toast('Settled & paid out 🏆'); await load(); } catch(e){ toast(e.message,true); }
+}
+async function pushMarket(id) { if(!confirm('Push this pool? Everyone gets refunded.'))return; try{ await api('POST','/api/admin/market/'+id+'/result',{is_push:true}); toast('Pushed — refunded'); await load(); }catch(e){toast(e.message,true);} }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-if (getPin()) {
-  loadState();
-} else {
-  showPinOverlay();
+function noEvent() { return `<div class="card"><div class="empty"><div class="e">✨</div>Create an event in the Event tab first.</div></div>`; }
+
+// ─── Boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  try { templates = await api('GET', '/api/templates'); } catch(e) { return; }
+  await load();
+  setInterval(() => { if (activeTab==='markets'||activeTab==='settle') load().catch(()=>{}); }, 9000);
 }
-setInterval(loadState, 10000);
+boot();
 </script>
 </body>
 </html>

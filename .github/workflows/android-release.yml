@@ -33,14 +33,14 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/golf-betting.keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/sidebet.keystore
 
       - name: Build release AAB
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android/app/golf-betting.keystore \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android/app/sidebet.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}

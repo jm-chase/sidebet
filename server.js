@@ -9,368 +9,72 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Templates ────────────────────────────────────────────────────────────────
+// A template seeds an event with a starter set of contestants + markets so the
+// app is immediately usable. Everything seeded is fully editable afterwards.
 
-function getActiveTournament() {
-  return db.prepare('SELECT * FROM tournaments ORDER BY id DESC LIMIT 1').get();
-}
+const TEMPLATES = {
+  racing: {
+    label: 'Race Day',
+    emoji: '🏁',
+    accent: 'cyan',
+    blurb: 'Dogs, horses, drones, anything with a finish line.',
+    contestants: [
+      { name: 'Rocket', emoji: '🐕', subtitle: 'Lane 1' },
+      { name: 'Biscuit', emoji: '🐕', subtitle: 'Lane 2' },
+      { name: 'Turbo', emoji: '🐕', subtitle: 'Lane 3' },
+      { name: 'Noodle', emoji: '🐕', subtitle: 'Lane 4' },
+      { name: 'Pickles', emoji: '🐕', subtitle: 'Lane 5' },
+      { name: 'Zoom', emoji: '🐕', subtitle: 'Lane 6' },
+    ],
+    markets: [
+      { name: 'Win', type: 'win', top_n: 1 },
+      { name: 'Place (Top 2)', type: 'topn', top_n: 2 },
+      { name: 'Show (Top 3)', type: 'topn', top_n: 3 },
+    ],
+  },
+  tournament: {
+    label: 'Tournament',
+    emoji: '⛳',
+    accent: 'emerald',
+    blurb: 'Golf, poker, bracket play — crown a champion.',
+    contestants: [
+      { name: 'Player 1', emoji: '🏌️', subtitle: '' },
+      { name: 'Player 2', emoji: '🏌️', subtitle: '' },
+      { name: 'Player 3', emoji: '🏌️', subtitle: '' },
+      { name: 'Player 4', emoji: '🏌️', subtitle: '' },
+    ],
+    markets: [
+      { name: 'Overall Winner', type: 'win', top_n: 1 },
+      { name: 'Podium (Top 3)', type: 'topn', top_n: 3 },
+    ],
+  },
+  h2h: {
+    label: 'Head-to-Head',
+    emoji: '🥊',
+    accent: 'rose',
+    blurb: 'Two sides enter. Pick who comes out on top.',
+    contestants: [
+      { name: 'Side A', emoji: '🔴', subtitle: '' },
+      { name: 'Side B', emoji: '🔵', subtitle: '' },
+    ],
+    markets: [
+      { name: 'Winner', type: 'h2h', top_n: 1, all: true },
+    ],
+  },
+  custom: {
+    label: 'Custom',
+    emoji: '✨',
+    accent: 'violet',
+    blurb: 'A blank canvas. Add your own contestants and pools.',
+    contestants: [],
+    markets: [],
+  },
+};
 
-function getTournamentPlayers(tournamentId) {
-  return db.prepare('SELECT * FROM players WHERE tournament_id = ?').all(tournamentId);
-}
+const ACCENTS = ['emerald', 'cyan', 'violet', 'rose', 'amber', 'blue'];
 
-function computeEffectiveHandicap(courseHandicap, hcpAllowance) {
-  return Math.round(courseHandicap * hcpAllowance / 100);
-}
-
-function computeMainOdds(tournamentId) {
-  const bets = db.prepare('SELECT * FROM bets WHERE tournament_id = ?').all(tournamentId);
-  let winPool = 0, showPool = 0;
-  const winByPlayer = {}, showByPlayer = {};
-
-  for (const b of bets) {
-    if (b.type === 'win') {
-      winPool += b.amount;
-      winByPlayer[b.player_id] = (winByPlayer[b.player_id] || 0) + b.amount;
-    } else if (b.type === 'show') {
-      showPool += b.amount;
-      showByPlayer[b.player_id] = (showByPlayer[b.player_id] || 0) + b.amount;
-    }
-  }
-
-  const players = getTournamentPlayers(tournamentId);
-  const oddsMap = {};
-  for (const p of players) {
-    const winAmt = winByPlayer[p.id] || 0;
-    const showAmt = showByPlayer[p.id] || 0;
-    let winOdds = null, showOdds = null;
-    if (winAmt > 0 && winPool > winAmt) {
-      const profit = (winPool - winAmt) / winAmt;
-      winOdds = profit >= 1 ? Math.round(profit * 100) : -Math.round(100 / profit);
-    } else if (winAmt > 0) {
-      winOdds = -99999;
-    }
-    if (showAmt > 0 && showPool > showAmt) {
-      const profit = (showPool - showAmt) / showAmt;
-      showOdds = profit >= 1 ? Math.round(profit * 100) : -Math.round(100 / profit);
-    } else if (showAmt > 0) {
-      showOdds = -99999;
-    }
-    oddsMap[p.id] = { winOdds, showOdds, winAmount: winAmt, showAmount: showAmt };
-  }
-
-  return { winPool, showPool, oddsMap, bets };
-}
-
-function computeMainPayouts(tournamentId) {
-  const results = db.prepare('SELECT * FROM tournament_results WHERE tournament_id = ?').get(tournamentId);
-  if (!results) return [];
-
-  const { winPool, showPool, bets } = computeMainOdds(tournamentId);
-  const { first_player_id, second_player_id, third_player_id } = results;
-
-  const showIds = new Set([first_player_id, second_player_id, third_player_id].filter(Boolean));
-
-  // Win pool: only first place wins
-  const winningBets = bets.filter(b => b.type === 'win' && b.player_id === first_player_id);
-  const winningTotal = winningBets.reduce((s, b) => s + b.amount, 0);
-  const losingWinBets = bets.filter(b => b.type === 'win' && b.player_id !== first_player_id);
-  const losingWinPool = losingWinBets.reduce((s, b) => s + b.amount, 0);
-
-  // Show pool: top 3 share proportionally among bettors of top-3 players
-  const showWinningBets = bets.filter(b => b.type === 'show' && showIds.has(b.player_id));
-  const showLosingBets = bets.filter(b => b.type === 'show' && !showIds.has(b.player_id));
-  const showWinTotal = showWinningBets.reduce((s, b) => s + b.amount, 0);
-  const showLosePool = showLosingBets.reduce((s, b) => s + b.amount, 0);
-
-  const payouts = [];
-
-  for (const bet of bets) {
-    let payout = 0;
-    let refund = 0;
-
-    if (bet.type === 'win') {
-      if (bet.player_id === first_player_id && winningTotal > 0) {
-        payout = bet.amount + (bet.amount / winningTotal) * losingWinPool;
-      } else if (first_player_id == null) {
-        refund = bet.amount;
-      }
-    } else if (bet.type === 'show') {
-      if (showIds.has(bet.player_id) && showWinTotal > 0) {
-        payout = bet.amount + (bet.amount / showWinTotal) * showLosePool;
-      } else if (showIds.size === 0) {
-        refund = bet.amount;
-      }
-    }
-
-    payouts.push({ bet, payout: Math.round(payout * 100) / 100, refund: Math.round(refund * 100) / 100 });
-  }
-
-  return payouts;
-}
-
-function computeStandings(tournamentId) {
-  const t = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
-  if (!t) return [];
-  const players = getTournamentPlayers(tournamentId);
-  const scores = db.prepare('SELECT * FROM scores WHERE tournament_id = ?').all(tournamentId);
-
-  const scoreMap = {};
-  for (const s of scores) {
-    if (!scoreMap[s.player_id]) scoreMap[s.player_id] = {};
-    scoreMap[s.player_id][s.round] = s.gross_score;
-  }
-
-  const standings = players.map(p => {
-    const effHcp = computeEffectiveHandicap(p.course_handicap, t.hcp_allowance);
-    const roundNets = [];
-    let totalNet = null;
-    let hasScores = false;
-
-    for (let r = 1; r <= t.rounds; r++) {
-      const gross = scoreMap[p.id] && scoreMap[p.id][r];
-      if (gross != null) {
-        hasScores = true;
-        const net = gross - effHcp;
-        roundNets.push({ round: r, gross, net });
-        totalNet = (totalNet || 0) + net;
-      } else {
-        roundNets.push({ round: r, gross: null, net: null });
-      }
-    }
-
-    return { player: p, effHcp, roundNets, totalNet, hasScores };
-  });
-
-  // Sort: players with scores first (ascending net), then no scores
-  const withScores = standings.filter(s => s.hasScores).sort((a, b) => a.totalNet - b.totalNet);
-  const noScores = standings.filter(s => !s.hasScores);
-
-  // Assign positions with ties
-  let pos = 1;
-  for (let i = 0; i < withScores.length; i++) {
-    if (i > 0 && withScores[i].totalNet !== withScores[i - 1].totalNet) {
-      pos = i + 1;
-    }
-    withScores[i].position = pos;
-  }
-
-  return [...withScores, ...noScores.map(s => ({ ...s, position: null }))];
-}
-
-function computeHolePayouts(tournamentId, round, hole) {
-  const hs = db.prepare('SELECT * FROM hole_status WHERE tournament_id = ? AND round = ? AND hole = ?').get(tournamentId, round, hole);
-  if (!hs || hs.status !== 'final') return [];
-
-  const holeBets = db.prepare('SELECT * FROM hole_bets WHERE tournament_id = ? AND round = ? AND hole = ?').all(tournamentId, round, hole);
-  const totalPool = holeBets.reduce((s, b) => s + b.amount, 0);
-
-  if (hs.is_push) {
-    return holeBets.map(b => ({ bet: b, payout: 0, refund: b.amount }));
-  }
-
-  const winnerId = hs.winner_player_id;
-  const winnerBets = holeBets.filter(b => b.player_id === winnerId);
-  const winnerTotal = winnerBets.reduce((s, b) => s + b.amount, 0);
-
-  return holeBets.map(b => {
-    if (b.player_id === winnerId && winnerTotal > 0) {
-      const payout = b.amount + (b.amount / winnerTotal) * (totalPool - winnerTotal);
-      return { bet: b, payout: Math.round(payout * 100) / 100, refund: 0 };
-    }
-    return { bet: b, payout: 0, refund: 0 };
-  });
-}
-
-function computePvpPayouts(matchupId) {
-  const matchup = db.prepare('SELECT * FROM pvp_matchups WHERE id = ?').get(matchupId);
-  if (!matchup || matchup.status !== 'final') return [];
-
-  const pvpBets = db.prepare('SELECT * FROM pvp_bets WHERE matchup_id = ?').all(matchupId);
-
-  if (matchup.is_push) {
-    return pvpBets.map(b => ({ bet: b, payout: 0, refund: b.amount }));
-  }
-
-  const winnerId = matchup.winner_player_id;
-  const winnerBets = pvpBets.filter(b => b.player_id === winnerId);
-  const loserBets = pvpBets.filter(b => b.player_id !== winnerId);
-  const winnerTotal = winnerBets.reduce((s, b) => s + b.amount, 0);
-  const loserTotal = loserBets.reduce((s, b) => s + b.amount, 0);
-
-  return pvpBets.map(b => {
-    if (b.player_id === winnerId && winnerTotal > 0) {
-      const payout = b.amount + (b.amount / winnerTotal) * loserTotal;
-      return { bet: b, payout: Math.round(payout * 100) / 100, refund: 0 };
-    }
-    return { bet: b, payout: 0, refund: 0 };
-  });
-}
-
-function computeBettorStats(filterName) {
-  const tournaments = db.prepare("SELECT * FROM tournaments WHERE status = 'final'").all();
-  const bettorMap = {};
-
-  function ensureBettor(name) {
-    if (!bettorMap[name]) {
-      bettorMap[name] = { name, wagered: 0, payout: 0, betsPlaced: 0, wins: 0 };
-    }
-    return bettorMap[name];
-  }
-
-  for (const t of tournaments) {
-    // Main bets
-    const mainPayouts = computeMainPayouts(t.id);
-    for (const { bet, payout, refund } of mainPayouts) {
-      const btr = ensureBettor(bet.bettor_name);
-      btr.wagered += bet.amount;
-      btr.betsPlaced++;
-      const received = payout || refund;
-      btr.payout += received;
-      if (received > bet.amount) btr.wins++;
-    }
-
-    // Hole bets
-    const holeStatuses = db.prepare("SELECT * FROM hole_status WHERE tournament_id = ? AND status = 'final'").all(t.id);
-    for (const hs of holeStatuses) {
-      const payouts = computeHolePayouts(t.id, hs.round, hs.hole);
-      for (const { bet, payout, refund } of payouts) {
-        const btr = ensureBettor(bet.bettor_name);
-        btr.wagered += bet.amount;
-        btr.betsPlaced++;
-        const received = payout || refund;
-        btr.payout += received;
-        if (received > bet.amount) btr.wins++;
-      }
-    }
-
-    // PvP bets
-    const matchups = db.prepare("SELECT * FROM pvp_matchups WHERE tournament_id = ? AND status = 'final'").all(t.id);
-    for (const m of matchups) {
-      const payouts = computePvpPayouts(m.id);
-      for (const { bet, payout, refund } of payouts) {
-        const btr = ensureBettor(bet.bettor_name);
-        btr.wagered += bet.amount;
-        btr.betsPlaced++;
-        const received = payout || refund;
-        btr.payout += received;
-        if (received > bet.amount) btr.wins++;
-      }
-    }
-  }
-
-  let result = Object.values(bettorMap).map(b => ({
-    name: b.name,
-    wagered: Math.round(b.wagered * 100) / 100,
-    payout: Math.round(b.payout * 100) / 100,
-    net: Math.round((b.payout - b.wagered) * 100) / 100,
-    betsPlaced: b.betsPlaced,
-    wins: b.wins,
-    winRate: b.betsPlaced > 0 ? Math.round((b.wins / b.betsPlaced) * 100) : 0
-  }));
-
-  if (filterName) {
-    const lower = filterName.toLowerCase();
-    result = result.filter(b => b.name.toLowerCase().includes(lower));
-  }
-
-  return result.sort((a, b) => b.net - a.net);
-}
-
-function computePlayerStats() {
-  const tournaments = db.prepare("SELECT * FROM tournaments WHERE status = 'final'").all();
-  const playerMap = {};
-
-  function ensurePlayer(id, name) {
-    if (!playerMap[id]) playerMap[id] = { id, name, tournaments: 0, wins: 0, top3: 0, netScores: [], totalBacking: 0 };
-    return playerMap[id];
-  }
-
-  for (const t of tournaments) {
-    const standings = computeStandings(t.id);
-    const results = db.prepare('SELECT * FROM tournament_results WHERE tournament_id = ?').get(t.id);
-
-    for (const s of standings) {
-      if (!s.hasScores) continue;
-      const p = ensurePlayer(s.player.id, s.player.name);
-      p.tournaments++;
-      if (s.totalNet != null) p.netScores.push(s.totalNet);
-      if (results) {
-        if (results.first_player_id === s.player.id) p.wins++;
-        if ([results.first_player_id, results.second_player_id, results.third_player_id].includes(s.player.id)) p.top3++;
-      }
-    }
-
-    // Backing
-    const bets = db.prepare('SELECT * FROM bets WHERE tournament_id = ?').all(t.id);
-    for (const b of bets) {
-      if (playerMap[b.player_id]) playerMap[b.player_id].totalBacking += b.amount;
-    }
-  }
-
-  return Object.values(playerMap).map(p => ({
-    id: p.id,
-    name: p.name,
-    tournaments: p.tournaments,
-    wins: p.wins,
-    top3: p.top3,
-    avgNet: p.netScores.length > 0 ? Math.round((p.netScores.reduce((s, n) => s + n, 0) / p.netScores.length) * 10) / 10 : null,
-    totalBacking: Math.round(p.totalBacking * 100) / 100
-  })).sort((a, b) => b.wins - a.wins || b.top3 - a.top3);
-}
-
-function enrichHoles(tournamentId) {
-  const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
-  if (!tournament) return [];
-
-  const allHoleStatuses = db.prepare('SELECT * FROM hole_status WHERE tournament_id = ?').all(tournamentId);
-  const holeBets = db.prepare('SELECT * FROM hole_bets WHERE tournament_id = ?').all(tournamentId);
-  const players = getTournamentPlayers(tournamentId);
-  const playerMap = {};
-  for (const p of players) playerMap[p.id] = p;
-
-  const result = [];
-  for (let round = 1; round <= tournament.rounds; round++) {
-    for (let hole = 1; hole <= 18; hole++) {
-      const hs = allHoleStatuses.find(h => h.round === round && h.hole === hole) || { round, hole, status: 'locked', winner_player_id: null, is_push: 0 };
-      const betsForHole = holeBets.filter(b => b.round === round && b.hole === hole);
-      const pool = betsForHole.reduce((s, b) => s + b.amount, 0);
-      const playerPools = {};
-      for (const b of betsForHole) {
-        playerPools[b.player_id] = (playerPools[b.player_id] || 0) + b.amount;
-      }
-      const entry = { ...hs, pool, playerPools, bets: betsForHole };
-      if (hs.status === 'final') {
-        entry.payouts = computeHolePayouts(tournamentId, round, hole);
-        entry.winnerName = hs.is_push ? 'PUSH' : (playerMap[hs.winner_player_id] ? playerMap[hs.winner_player_id].name : null);
-      }
-      result.push(entry);
-    }
-  }
-  return result;
-}
-
-function enrichMatchups(tournamentId) {
-  const matchups = db.prepare('SELECT * FROM pvp_matchups WHERE tournament_id = ?').all(tournamentId);
-  const players = getTournamentPlayers(tournamentId);
-  const playerMap = {};
-  for (const p of players) playerMap[p.id] = p;
-
-  return matchups.map(m => {
-    const bets = db.prepare('SELECT * FROM pvp_bets WHERE matchup_id = ?').all(m.id);
-    const p1Pool = bets.filter(b => b.player_id === m.player1_id).reduce((s, b) => s + b.amount, 0);
-    const p2Pool = bets.filter(b => b.player_id === m.player2_id).reduce((s, b) => s + b.amount, 0);
-    const totalPool = p1Pool + p2Pool;
-    const entry = { ...m, bets, p1Pool, p2Pool, totalPool, player1: playerMap[m.player1_id], player2: playerMap[m.player2_id] };
-    if (m.status === 'final') {
-      entry.payouts = computePvpPayouts(m.id);
-      entry.winnerName = m.is_push ? 'PUSH' : (playerMap[m.winner_player_id] ? playerMap[m.winner_player_id].name : null);
-    }
-    return entry;
-  });
-}
-
-// ─── Admin Auth ──────────────────────────────────────────────────────────────
+// ─── Admin auth ───────────────────────────────────────────────────────────────
 
 function requireAdminPin(req, res, next) {
   const pin = process.env.ADMIN_PIN;
@@ -381,239 +85,380 @@ function requireAdminPin(req, res, next) {
 
 app.use('/api/admin', requireAdminPin);
 
-// ─── Routes ─────────────────────────────────────────────────────────────────
+// ─── Data helpers ─────────────────────────────────────────────────────────────
 
-// GET /api/state
-app.get('/api/state', (req, res) => {
-  const tournament = getActiveTournament();
-  if (!tournament) return res.json({ tournament: null });
+function getActiveEvent() {
+  return db.prepare('SELECT * FROM events ORDER BY id DESC LIMIT 1').get();
+}
 
-  const players = getTournamentPlayers(tournament.id);
-  const { winPool, showPool, oddsMap, bets } = computeMainOdds(tournament.id);
-  const results = db.prepare('SELECT * FROM tournament_results WHERE tournament_id = ?').get(tournament.id);
-  const mainPayouts = tournament.status === 'final' ? computeMainPayouts(tournament.id) : [];
-  const standings = computeStandings(tournament.id);
-  const holes = enrichHoles(tournament.id);
-  const matchups = enrichMatchups(tournament.id);
+function getContestants(eventId) {
+  return db.prepare('SELECT * FROM contestants WHERE event_id = ? ORDER BY sort_order, id').all(eventId);
+}
 
-  res.json({ tournament, players, bets, winPool, showPool, oddsMap, results, mainPayouts, standings, holes, matchups });
+function getMarketContestantIds(marketId) {
+  return db.prepare('SELECT contestant_id FROM market_contestants WHERE market_id = ?')
+    .all(marketId).map(r => r.contestant_id);
+}
+
+// Returns the list of contestant ids eligible in a market. Empty restriction =
+// every contestant in the event.
+function eligibleContestantIds(market, eventContestantIds) {
+  const restricted = getMarketContestantIds(market.id);
+  return restricted.length ? restricted : eventContestantIds.slice();
+}
+
+// ─── Odds + pool math ─────────────────────────────────────────────────────────
+
+function americanOdds(profitRatio) {
+  if (!isFinite(profitRatio) || profitRatio <= 0) return null;
+  return profitRatio >= 1 ? Math.round(profitRatio * 100) : -Math.round(100 / profitRatio);
+}
+
+// Builds a display-ready market: pool totals, per-contestant backing, live odds.
+function enrichMarket(market, eventContestantIds, rakePct) {
+  const bets = db.prepare('SELECT * FROM bets WHERE market_id = ?').all(market.id);
+  const pool = bets.reduce((s, b) => s + b.amount, 0);
+  const distributable = pool * (1 - rakePct / 100);
+
+  const byContestant = {};
+  for (const b of bets) byContestant[b.contestant_id] = (byContestant[b.contestant_id] || 0) + b.amount;
+
+  const eligible = eligibleContestantIds(market, eventContestantIds);
+  const lines = eligible.map(cid => {
+    const backed = byContestant[cid] || 0;
+    const share = pool > 0 ? backed / pool : 0;
+    // For win / h2h we can quote true pari-mutuel odds: if this contestant wins,
+    // its backers split the whole distributable pool. top-N payouts depend on the
+    // other in-the-money finishers, so we quote pool share instead.
+    let odds = null;
+    if ((market.type === 'win' || market.type === 'h2h') && backed > 0 && pool > backed) {
+      odds = americanOdds((distributable - backed) / backed);
+    } else if ((market.type === 'win' || market.type === 'h2h') && backed > 0) {
+      odds = -99999; // sole backer / nobody else in pool
+    }
+    return { contestant_id: cid, backed: round2(backed), share: Math.round(share * 100), odds };
+  });
+
+  const results = db.prepare('SELECT contestant_id, rank FROM market_results WHERE market_id = ? ORDER BY rank').all(market.id);
+  const out = { ...market, pool: round2(pool), eligible, lines, bets, results };
+  if (market.status === 'settled') out.payouts = settleMarket(market, bets, eventContestantIds, rakePct);
+  return out;
+}
+
+// The core pari-mutuel engine. Winners split the distributable pool in
+// proportion to their stake. Push or no-winner ⇒ full refunds.
+function settleMarket(market, bets, eventContestantIds, rakePct) {
+  if (!bets) bets = db.prepare('SELECT * FROM bets WHERE market_id = ?').all(market.id);
+  const pool = bets.reduce((s, b) => s + b.amount, 0);
+  const distributable = pool * (1 - rakePct / 100);
+
+  if (market.is_push) {
+    return bets.map(b => ({ bet: b, payout: 0, refund: round2(b.amount) }));
+  }
+
+  const ranked = db.prepare('SELECT contestant_id, rank FROM market_results WHERE market_id = ?').all(market.id);
+  const cutoff = market.type === 'topn' ? market.top_n : 1;
+  const winners = new Set(ranked.filter(r => r.rank <= cutoff).map(r => r.contestant_id));
+
+  const winningBets = bets.filter(b => winners.has(b.contestant_id));
+  const winnerTotal = winningBets.reduce((s, b) => s + b.amount, 0);
+
+  // Nobody backed a winner ⇒ refund everyone (no house windfall in a friendly pool).
+  if (winnerTotal === 0) {
+    return bets.map(b => ({ bet: b, payout: 0, refund: round2(b.amount) }));
+  }
+
+  return bets.map(b => {
+    if (winners.has(b.contestant_id)) {
+      return { bet: b, payout: round2(distributable * (b.amount / winnerTotal)), refund: 0 };
+    }
+    return { bet: b, payout: 0, refund: 0 };
+  });
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+
+// ─── Stats across settled events ──────────────────────────────────────────────
+
+function computeBettorStats(filterName) {
+  const events = db.prepare("SELECT * FROM events WHERE status = 'settled'").all();
+  const map = {};
+  const ensure = name => (map[name] || (map[name] = { name, wagered: 0, returned: 0, bets: 0, wins: 0 }));
+
+  for (const ev of events) {
+    const cids = getContestants(ev.id).map(c => c.id);
+    const markets = db.prepare("SELECT * FROM markets WHERE event_id = ? AND status = 'settled'").all(ev.id);
+    for (const m of markets) {
+      for (const { bet, payout, refund } of settleMarket(m, null, cids, ev.rake_pct)) {
+        const b = ensure(bet.bettor_name);
+        b.wagered += bet.amount;
+        b.bets++;
+        const got = payout || refund;
+        b.returned += got;
+        if (got > bet.amount) b.wins++;
+      }
+    }
+  }
+
+  let rows = Object.values(map).map(b => ({
+    name: b.name,
+    wagered: round2(b.wagered),
+    returned: round2(b.returned),
+    net: round2(b.returned - b.wagered),
+    bets: b.bets,
+    winRate: b.bets ? Math.round((b.wins / b.bets) * 100) : 0,
+  }));
+
+  if (filterName) {
+    const q = filterName.toLowerCase();
+    rows = rows.filter(r => r.name.toLowerCase().includes(q));
+  }
+  return rows.sort((a, b) => b.net - a.net);
+}
+
+// ─── Public routes ────────────────────────────────────────────────────────────
+
+// Full snapshot of the active event for the bettor app.
+app.get('/api/event', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.json({ event: null });
+
+  const contestants = getContestants(ev.id);
+  const cids = contestants.map(c => c.id);
+  const marketRows = db.prepare('SELECT * FROM markets WHERE event_id = ? ORDER BY sort_order, id').all(ev.id);
+  const markets = marketRows.map(m => enrichMarket(m, cids, ev.rake_pct));
+  const poolTotal = markets.reduce((s, m) => s + m.pool, 0);
+
+  res.json({ event: ev, contestants, markets, poolTotal: round2(poolTotal) });
 });
 
-// GET /api/admin/tournaments
-app.get('/api/admin/tournaments', (req, res) => {
-  const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY id DESC').all();
-  res.json(tournaments);
+app.get('/api/templates', (req, res) => {
+  res.json(Object.entries(TEMPLATES).map(([id, t]) => ({
+    id, label: t.label, emoji: t.emoji, accent: t.accent, blurb: t.blurb,
+  })));
 });
 
-// POST /api/admin/tournament
-app.post('/api/admin/tournament', (req, res) => {
-  const { name, course, date, rounds = 2, hcp_allowance = 100 } = req.body;
-  if (!name || !course || !date) return res.status(400).json({ error: 'name, course, date required' });
-  const info = db.prepare('INSERT INTO tournaments (name, course, date, rounds, hcp_allowance) VALUES (?, ?, ?, ?, ?)').run(name, course, date, rounds, hcp_allowance);
-  res.json({ id: info.lastInsertRowid });
+app.get('/api/stats', (req, res) => {
+  res.json({ bettors: computeBettorStats(req.query.bettor || null) });
 });
 
-// PUT /api/admin/tournament
-app.put('/api/admin/tournament', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { name, course, date, rounds, hcp_allowance } = req.body;
-  db.prepare('UPDATE tournaments SET name=COALESCE(?,name), course=COALESCE(?,course), date=COALESCE(?,date), rounds=COALESCE(?,rounds), hcp_allowance=COALESCE(?,hcp_allowance) WHERE id=?')
-    .run(name || null, course || null, date || null, rounds || null, hcp_allowance || null, t.id);
-  res.json({ ok: true });
-});
-
-// POST /api/admin/status
-app.post('/api/admin/status', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { status } = req.body;
-  if (!['open', 'closed'].includes(status)) return res.status(400).json({ error: 'status must be open or closed' });
-  db.prepare('UPDATE tournaments SET status=? WHERE id=?').run(status, t.id);
-  res.json({ ok: true });
-});
-
-// POST /api/admin/players
-app.post('/api/admin/players', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { name, handicap_index = 0, course_handicap = 0 } = req.body;
-  if (!name) return res.status(400).json({ error: 'name required' });
-  const info = db.prepare('INSERT INTO players (tournament_id, name, handicap_index, course_handicap) VALUES (?, ?, ?, ?)').run(t.id, name, handicap_index, course_handicap);
-  res.json({ id: info.lastInsertRowid });
-});
-
-// PUT /api/admin/players/:id
-app.put('/api/admin/players/:id', (req, res) => {
-  const { name, handicap_index, course_handicap } = req.body;
-  db.prepare('UPDATE players SET name=COALESCE(?,name), handicap_index=COALESCE(?,handicap_index), course_handicap=COALESCE(?,course_handicap) WHERE id=?')
-    .run(name || null, handicap_index != null ? handicap_index : null, course_handicap != null ? course_handicap : null, req.params.id);
-  res.json({ ok: true });
-});
-
-// DELETE /api/admin/players/:id
-app.delete('/api/admin/players/:id', (req, res) => {
-  db.prepare('DELETE FROM players WHERE id=?').run(req.params.id);
-  res.json({ ok: true });
-});
-
-// POST /api/bet
+// Place a bet (public).
 app.post('/api/bet', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  if (t.status !== 'open') return res.status(400).json({ error: 'Betting is not open' });
-  const { bettor, player_id, type, amount } = req.body;
-  if (!bettor || !player_id || !type || !amount) return res.status(400).json({ error: 'bettor, player_id, type, amount required' });
-  if (!['win', 'show'].includes(type)) return res.status(400).json({ error: 'type must be win or show' });
-  if (amount < 1) return res.status(400).json({ error: 'minimum bet is $1' });
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No active event' });
+  if (ev.status !== 'open') return res.status(400).json({ error: 'Betting is not open' });
+
+  const { market_id, bettor, contestant_id, amount } = req.body;
+  if (!market_id || !bettor || !contestant_id || amount == null) {
+    return res.status(400).json({ error: 'market_id, bettor, contestant_id, amount required' });
+  }
+  if (amount < ev.min_bet) return res.status(400).json({ error: `Minimum bet is ${ev.currency}${ev.min_bet}` });
+
+  const market = db.prepare('SELECT * FROM markets WHERE id = ? AND event_id = ?').get(market_id, ev.id);
+  if (!market) return res.status(404).json({ error: 'Market not found' });
+  if (market.status !== 'open') return res.status(400).json({ error: 'This pool is closed' });
+
+  const cids = getContestants(ev.id).map(c => c.id);
+  const eligible = eligibleContestantIds(market, cids);
+  if (!eligible.includes(Number(contestant_id))) {
+    return res.status(400).json({ error: 'That pick is not in this pool' });
+  }
+
   const id = randomUUID();
-  db.prepare('INSERT INTO bets (id, tournament_id, bettor_name, player_id, type, amount) VALUES (?, ?, ?, ?, ?, ?)').run(id, t.id, bettor, player_id, type, amount);
+  db.prepare('INSERT INTO bets (id, market_id, bettor_name, contestant_id, amount) VALUES (?, ?, ?, ?, ?)')
+    .run(id, market_id, String(bettor).trim(), contestant_id, amount);
   res.json({ id });
 });
 
-// POST /api/admin/scores
-app.post('/api/admin/scores', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { round, scores } = req.body;
-  if (!round || !scores) return res.status(400).json({ error: 'round and scores required' });
-  const upsert = db.prepare('INSERT INTO scores (tournament_id, player_id, round, gross_score) VALUES (?, ?, ?, ?) ON CONFLICT(tournament_id, player_id, round) DO UPDATE SET gross_score=excluded.gross_score');
-  for (const [player_id, gross_score] of Object.entries(scores)) {
-    if (gross_score != null && gross_score !== '') {
-      upsert.run(t.id, player_id, round, gross_score);
-    }
+// ─── Admin routes ─────────────────────────────────────────────────────────────
+
+app.get('/api/admin/events', (req, res) => {
+  res.json(db.prepare('SELECT * FROM events ORDER BY id DESC').all());
+});
+
+// Create an event, optionally seeded from a template.
+app.post('/api/admin/event', (req, res) => {
+  const { name, venue = '', date = '', template = 'custom', currency = '$', rake_pct = 0, min_bet = 1 } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+
+  const tpl = TEMPLATES[template] || TEMPLATES.custom;
+  const emoji = req.body.emoji || tpl.emoji;
+  const accent = req.body.accent || tpl.accent;
+
+  const info = db.prepare(`INSERT INTO events (name, venue, date, emoji, accent, currency, rake_pct, min_bet, template, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'setup')`)
+    .run(name, venue, date, emoji, accent, currency, rake_pct, min_bet, template);
+  const eventId = info.lastInsertRowid;
+
+  const insContestant = db.prepare('INSERT INTO contestants (event_id, name, emoji, subtitle, sort_order) VALUES (?, ?, ?, ?, ?)');
+  const seededIds = [];
+  tpl.contestants.forEach((c, i) => {
+    const r = insContestant.run(eventId, c.name, c.emoji || '', c.subtitle || '', i);
+    seededIds.push(r.lastInsertRowid);
+  });
+
+  const insMarket = db.prepare('INSERT INTO markets (event_id, name, type, top_n, sort_order, status) VALUES (?, ?, ?, ?, ?, \'open\')');
+  const insMC = db.prepare('INSERT INTO market_contestants (market_id, contestant_id) VALUES (?, ?)');
+  tpl.markets.forEach((m, i) => {
+    const r = insMarket.run(eventId, m.name, m.type, m.top_n || 1, i);
+    if (m.all) for (const cid of seededIds) insMC.run(r.lastInsertRowid, cid);
+  });
+
+  res.json({ id: eventId });
+});
+
+app.put('/api/admin/event', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No event' });
+  const f = req.body;
+  db.prepare(`UPDATE events SET
+      name = COALESCE(?, name), venue = COALESCE(?, venue), date = COALESCE(?, date),
+      emoji = COALESCE(?, emoji), accent = COALESCE(?, accent), currency = COALESCE(?, currency),
+      rake_pct = COALESCE(?, rake_pct), min_bet = COALESCE(?, min_bet)
+    WHERE id = ?`)
+    .run(f.name ?? null, f.venue ?? null, f.date ?? null, f.emoji ?? null,
+      f.accent ?? null, f.currency ?? null, f.rake_pct ?? null, f.min_bet ?? null, ev.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/event/status', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No event' });
+  const { status } = req.body;
+  if (!['setup', 'open', 'closed', 'settled'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  db.prepare('UPDATE events SET status = ? WHERE id = ?').run(status, ev.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/event/reset', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No event' });
+  const markets = db.prepare('SELECT id FROM markets WHERE event_id = ?').all(ev.id).map(m => m.id);
+  for (const mid of markets) {
+    db.prepare('DELETE FROM bets WHERE market_id = ?').run(mid);
+    db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
+  }
+  db.prepare("UPDATE markets SET status = 'open', is_push = 0 WHERE event_id = ?").run(ev.id);
+  db.prepare("UPDATE events SET status = 'open' WHERE id = ?").run(ev.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/event/:id', (req, res) => {
+  const id = req.params.id;
+  const markets = db.prepare('SELECT id FROM markets WHERE event_id = ?').all(id).map(m => m.id);
+  for (const mid of markets) {
+    db.prepare('DELETE FROM bets WHERE market_id = ?').run(mid);
+    db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
+    db.prepare('DELETE FROM market_contestants WHERE market_id = ?').run(mid);
+  }
+  db.prepare('DELETE FROM markets WHERE event_id = ?').run(id);
+  db.prepare('DELETE FROM contestants WHERE event_id = ?').run(id);
+  db.prepare('DELETE FROM events WHERE id = ?').run(id);
+  res.json({ ok: true });
+});
+
+// ── Contestants ──
+app.post('/api/admin/contestant', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No event' });
+  const { name, emoji = '', subtitle = '' } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const max = db.prepare('SELECT MAX(sort_order) AS m FROM contestants WHERE event_id = ?').get(ev.id).m || 0;
+  const r = db.prepare('INSERT INTO contestants (event_id, name, emoji, subtitle, sort_order) VALUES (?, ?, ?, ?, ?)')
+    .run(ev.id, name, emoji, subtitle, max + 1);
+  res.json({ id: r.lastInsertRowid });
+});
+
+app.put('/api/admin/contestant/:id', (req, res) => {
+  const { name, emoji, subtitle, sort_order } = req.body;
+  db.prepare(`UPDATE contestants SET name = COALESCE(?, name), emoji = COALESCE(?, emoji),
+      subtitle = COALESCE(?, subtitle), sort_order = COALESCE(?, sort_order) WHERE id = ?`)
+    .run(name ?? null, emoji ?? null, subtitle ?? null, sort_order ?? null, req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/contestant/:id', (req, res) => {
+  const id = req.params.id;
+  db.prepare('DELETE FROM bets WHERE contestant_id = ?').run(id);
+  db.prepare('DELETE FROM market_contestants WHERE contestant_id = ?').run(id);
+  db.prepare('DELETE FROM market_results WHERE contestant_id = ?').run(id);
+  db.prepare('DELETE FROM contestants WHERE id = ?').run(id);
+  res.json({ ok: true });
+});
+
+// ── Markets ──
+app.post('/api/admin/market', (req, res) => {
+  const ev = getActiveEvent();
+  if (!ev) return res.status(404).json({ error: 'No event' });
+  const { name, type = 'win', top_n = 1, contestant_ids } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  if (!['win', 'topn', 'h2h'].includes(type)) return res.status(400).json({ error: 'Invalid market type' });
+  const max = db.prepare('SELECT MAX(sort_order) AS m FROM markets WHERE event_id = ?').get(ev.id).m || 0;
+  const r = db.prepare('INSERT INTO markets (event_id, name, type, top_n, sort_order, status) VALUES (?, ?, ?, ?, ?, \'open\')')
+    .run(ev.id, name, type, top_n, max + 1);
+  const mid = r.lastInsertRowid;
+  if (Array.isArray(contestant_ids) && contestant_ids.length) {
+    const ins = db.prepare('INSERT OR IGNORE INTO market_contestants (market_id, contestant_id) VALUES (?, ?)');
+    for (const cid of contestant_ids) ins.run(mid, cid);
+  }
+  res.json({ id: mid });
+});
+
+app.put('/api/admin/market/:id', (req, res) => {
+  const { name, type, top_n, contestant_ids } = req.body;
+  db.prepare('UPDATE markets SET name = COALESCE(?, name), type = COALESCE(?, type), top_n = COALESCE(?, top_n) WHERE id = ?')
+    .run(name ?? null, type ?? null, top_n ?? null, req.params.id);
+  if (Array.isArray(contestant_ids)) {
+    db.prepare('DELETE FROM market_contestants WHERE market_id = ?').run(req.params.id);
+    const ins = db.prepare('INSERT OR IGNORE INTO market_contestants (market_id, contestant_id) VALUES (?, ?)');
+    for (const cid of contestant_ids) ins.run(req.params.id, cid);
   }
   res.json({ ok: true });
 });
 
-// POST /api/admin/scores/clear
-app.post('/api/admin/scores/clear', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { round } = req.body;
-  if (!round) return res.status(400).json({ error: 'round required' });
-  db.prepare('DELETE FROM scores WHERE tournament_id=? AND round=?').run(t.id, round);
+app.post('/api/admin/market/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!['open', 'closed'].includes(status)) return res.status(400).json({ error: 'status must be open or closed' });
+  db.prepare('UPDATE markets SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ ok: true });
 });
 
-// POST /api/results
-app.post('/api/results', requireAdminPin, (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { first, second, third } = req.body;
-  db.prepare('INSERT INTO tournament_results (tournament_id, first_player_id, second_player_id, third_player_id) VALUES (?, ?, ?, ?) ON CONFLICT(tournament_id) DO UPDATE SET first_player_id=excluded.first_player_id, second_player_id=excluded.second_player_id, third_player_id=excluded.third_player_id')
-    .run(t.id, first || null, second || null, third || null);
-  db.prepare("UPDATE tournaments SET status='final' WHERE id=?").run(t.id);
+// Settle a market with a finishing order. ranks: [{ contestant_id, rank }].
+app.post('/api/admin/market/:id/result', (req, res) => {
+  const mid = req.params.id;
+  const market = db.prepare('SELECT * FROM markets WHERE id = ?').get(mid);
+  if (!market) return res.status(404).json({ error: 'Market not found' });
+  const { ranks, is_push } = req.body;
+
+  db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
+  if (!is_push && Array.isArray(ranks)) {
+    const ins = db.prepare('INSERT OR REPLACE INTO market_results (market_id, contestant_id, rank) VALUES (?, ?, ?)');
+    for (const r of ranks) {
+      if (r.contestant_id != null && r.rank != null) ins.run(mid, r.contestant_id, r.rank);
+    }
+  }
+  db.prepare("UPDATE markets SET status = 'settled', is_push = ? WHERE id = ?").run(is_push ? 1 : 0, mid);
   res.json({ ok: true });
 });
 
-// POST /api/admin/holes/unlock
-app.post('/api/admin/holes/unlock', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { round, hole } = req.body;
-  db.prepare("INSERT INTO hole_status (tournament_id, round, hole, status) VALUES (?, ?, ?, 'open') ON CONFLICT(tournament_id, round, hole) DO UPDATE SET status='open', winner_player_id=NULL, is_push=0").run(t.id, round, hole);
+app.post('/api/admin/market/:id/reopen', (req, res) => {
+  const mid = req.params.id;
+  db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
+  db.prepare("UPDATE markets SET status = 'open', is_push = 0 WHERE id = ?").run(mid);
   res.json({ ok: true });
 });
 
-// POST /api/admin/holes/lock
-app.post('/api/admin/holes/lock', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { round, hole } = req.body;
-  db.prepare("INSERT INTO hole_status (tournament_id, round, hole, status) VALUES (?, ?, ?, 'locked') ON CONFLICT(tournament_id, round, hole) DO UPDATE SET status='locked'").run(t.id, round, hole);
+app.delete('/api/admin/market/:id', (req, res) => {
+  const mid = req.params.id;
+  db.prepare('DELETE FROM bets WHERE market_id = ?').run(mid);
+  db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
+  db.prepare('DELETE FROM market_contestants WHERE market_id = ?').run(mid);
+  db.prepare('DELETE FROM markets WHERE id = ?').run(mid);
   res.json({ ok: true });
 });
 
-// POST /api/admin/holes/result
-app.post('/api/admin/holes/result', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { round, hole, winner_player_id, is_push } = req.body;
-  db.prepare("INSERT INTO hole_status (tournament_id, round, hole, status, winner_player_id, is_push) VALUES (?, ?, ?, 'final', ?, ?) ON CONFLICT(tournament_id, round, hole) DO UPDATE SET status='final', winner_player_id=excluded.winner_player_id, is_push=excluded.is_push")
-    .run(t.id, round, hole, is_push ? null : winner_player_id, is_push ? 1 : 0);
-  res.json({ ok: true });
-});
-
-// POST /api/hole-bet
-app.post('/api/hole-bet', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { bettor, player_id, round, hole, amount } = req.body;
-  if (!bettor || !player_id || !round || !hole || !amount) return res.status(400).json({ error: 'bettor, player_id, round, hole, amount required' });
-  if (amount < 1) return res.status(400).json({ error: 'minimum bet is $1' });
-  const hs = db.prepare('SELECT * FROM hole_status WHERE tournament_id=? AND round=? AND hole=?').get(t.id, round, hole);
-  if (!hs || hs.status !== 'open') return res.status(400).json({ error: 'Hole is not open for betting' });
-  const id = randomUUID();
-  db.prepare('INSERT INTO hole_bets (id, tournament_id, round, hole, bettor_name, player_id, amount) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, t.id, round, hole, bettor, player_id, amount);
-  res.json({ id });
-});
-
-// POST /api/pvp/propose
-app.post('/api/pvp/propose', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  const { proposed_by, player1_id, player2_id, scoring_type = 'net', use_custom_stakes = 0, min_bet = 1 } = req.body;
-  if (!proposed_by || !player1_id || !player2_id) return res.status(400).json({ error: 'proposed_by, player1_id, player2_id required' });
-  if (String(player1_id) === String(player2_id)) return res.status(400).json({ error: 'players must be different' });
-  const info = db.prepare('INSERT INTO pvp_matchups (tournament_id, player1_id, player2_id, scoring_type, proposed_by, use_custom_stakes, min_bet) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(t.id, player1_id, player2_id, scoring_type, proposed_by, use_custom_stakes ? 1 : 0, min_bet);
-  res.json({ id: info.lastInsertRowid });
-});
-
-// POST /api/pvp/:id/bet
-app.post('/api/pvp/:id/bet', (req, res) => {
-  const matchup = db.prepare('SELECT * FROM pvp_matchups WHERE id=?').get(req.params.id);
-  if (!matchup) return res.status(404).json({ error: 'Matchup not found' });
-  if (matchup.status !== 'open') return res.status(400).json({ error: 'Matchup is not open for betting' });
-  const { bettor, player_id, amount } = req.body;
-  if (!bettor || !player_id || !amount) return res.status(400).json({ error: 'bettor, player_id, amount required' });
-  if (String(player_id) !== String(matchup.player1_id) && String(player_id) !== String(matchup.player2_id)) return res.status(400).json({ error: 'player_id must be one of the matchup players' });
-  const minBet = matchup.use_custom_stakes ? matchup.min_bet : 1;
-  if (amount < minBet) return res.status(400).json({ error: `minimum bet is $${minBet}` });
-  const id = randomUUID();
-  db.prepare('INSERT INTO pvp_bets (id, matchup_id, bettor_name, player_id, amount) VALUES (?, ?, ?, ?, ?)').run(id, matchup.id, bettor, player_id, amount);
-  res.json({ id });
-});
-
-// POST /api/admin/pvp/:id/close
-app.post('/api/admin/pvp/:id/close', (req, res) => {
-  db.prepare("UPDATE pvp_matchups SET status='closed' WHERE id=?").run(req.params.id);
-  res.json({ ok: true });
-});
-
-// POST /api/admin/pvp/:id/result
-app.post('/api/admin/pvp/:id/result', (req, res) => {
-  const { winner_player_id, is_push } = req.body;
-  db.prepare("UPDATE pvp_matchups SET status='final', winner_player_id=?, is_push=? WHERE id=?")
-    .run(is_push ? null : winner_player_id, is_push ? 1 : 0, req.params.id);
-  res.json({ ok: true });
-});
-
-// GET /api/stats
-app.get('/api/stats', (req, res) => {
-  const { bettor } = req.query;
-  const bettors = computeBettorStats(bettor || null);
-  const players = computePlayerStats();
-  res.json({ bettors, players });
-});
-
-// POST /api/admin/reset
-app.post('/api/admin/reset', (req, res) => {
-  const t = getActiveTournament();
-  if (!t) return res.status(404).json({ error: 'No tournament' });
-  db.prepare('DELETE FROM bets WHERE tournament_id=?').run(t.id);
-  db.prepare('DELETE FROM hole_bets WHERE tournament_id=?').run(t.id);
-  const matchupIds = db.prepare('SELECT id FROM pvp_matchups WHERE tournament_id=?').all(t.id).map(m => m.id);
-  for (const mid of matchupIds) db.prepare('DELETE FROM pvp_bets WHERE matchup_id=?').run(mid);
-  db.prepare('DELETE FROM pvp_matchups WHERE tournament_id=?').run(t.id);
-  db.prepare('DELETE FROM hole_status WHERE tournament_id=?').run(t.id);
-  db.prepare('DELETE FROM tournament_results WHERE tournament_id=?').run(t.id);
-  db.prepare('DELETE FROM scores WHERE tournament_id=?').run(t.id);
-  db.prepare("UPDATE tournaments SET status='open' WHERE id=?").run(t.id);
-  res.json({ ok: true });
-});
-
-// ─── Start ───────────────────────────────────────────────────────────────────
+// ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Golf betting app listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`SideBet listening on port ${PORT}`));

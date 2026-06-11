@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Golf Betting</string>
-    <string name="title_activity_main">Golf Betting</string>
+    <string name="app_name">SideBet</string>
+    <string name="title_activity_main">SideBet</string>
     <string name="package_name">com.sherpacollab.golfbetting</string>
     <string name="custom_url_scheme">com.sherpacollab.golfbetting</string>
 </resources>
