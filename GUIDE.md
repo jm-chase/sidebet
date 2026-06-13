@@ -77,16 +77,19 @@ keytool -genkey -v -keystore sidebet.keystore -alias sidebet -keyalg RSA -keysiz
 ### Build
 - [ ] Push to `main` (or run the workflow manually). Download the AAB / IPA from the Actions run.
 
-### App icon
-The current launcher icons are still the Capacitor placeholders. Generate real ones from `public/icon.svg`:
-- Easiest: `npx @capacitor/assets generate` with a 1024×1024 PNG export of `icon.svg` at `assets/icon.png`. It produces every Android mipmap and iOS icon size.
+### App icon ✅ done
+Real branded icons + splash screens are generated for Android and iOS (the mint "side bet" mark on a dark background). Source images live in `assets/`; regenerate anytime with:
+```bash
+node assets/generate-sources.js      # rebuild source PNGs from the brand mark
+npx capacitor-assets generate        # write all Android/iOS/PWA sizes
+```
 
 ### Store listings (both stores)
-- [ ] App name: **SideBet**
-- [ ] Short description, full description (lead with "pari-mutuel pools for any event — no real money").
-- [ ] At least 2 phone screenshots (Play) / 3 (App Store). Capture from the running app.
-- [ ] **Privacy policy URL** (required by both). The app stores only a device-local display name and bets tied to it — no accounts, no personal data collected server-side. A short policy stating that is enough.
-- [ ] **Content rating / gambling**: SideBet is for entertainment with no real-money wagering or payouts. Declare it as *simulated gambling* in the IARC questionnaire (Play) and set the appropriate age rating (App Store). Do **not** describe it as real-money gambling, or it triggers a far stricter review.
+Full ready-to-paste copy is in **[STORE-LISTING.md](STORE-LISTING.md)** — name, descriptions, keywords, categories, content-rating answers, and privacy-label guidance.
+- [ ] Paste name / descriptions / keywords from STORE-LISTING.md.
+- [ ] At least 2 phone screenshots (Play) / 3 (App Store). Capture from the running app (see STORE-LISTING.md for the four shots to take).
+- [ ] **Privacy policy URL** ✅ page written at `public/privacy.html` → it'll be live at `https://<your-backend>/privacy.html` once deployed. **Edit the contact-email placeholder in that file before submitting.**
+- [ ] **Content rating / gambling**: declare *simulated gambling* (Play IARC → Teen; Apple → 17+). Never describe it as real-money gambling. Details in STORE-LISTING.md.
 
 ### Bundle identifier
 The app's bundle ID is `com.sidebet.app` (Android `applicationId` + namespace and iOS `PRODUCT_BUNDLE_IDENTIFIER`). This is permanent once published — change it before first submission if you want a different reverse-domain (e.g. one matching a domain you own).
