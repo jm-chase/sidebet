@@ -22,6 +22,8 @@ Open `/admin.html`. If a PIN is set on the server, enter it once (cached for the
 
 You can open/close or delete each pool independently.
 
+**Optional — fixed odds (de-vigged Vegas line):** on any Win or Head-to-Head pool, hit **⚡ Set odds line**, paste the book's American odds for each side (e.g. `-150` / `+130`), and **Preview de-vig** to see the fair, juice-free odds. **Save fair line** flips the pool to fixed-odds: bets now lock those odds instead of pooling. Each pick shows a live "% matched" so you can see how balanced the action is. **Back to pool** reverts to pari-mutuel. (See README "Two pricing modes" for how settlement matches-then-pools.)
+
 ### 4. Open betting
 **Event tab → Open betting.** Guests can now place bets from the main app. Watch pools fill and odds move in real time. Hit **Close betting** to freeze everything (e.g. when the race starts).
 

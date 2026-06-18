@@ -373,15 +373,63 @@ function renderMarkets() {
   onTypeChange();
 }
 function marketAdminCard(mk) {
+  const cMap = {}; for (const c of (data.contestants||[])) cMap[c.id] = c;
+  const isLine = mk.pricing === 'line';
   const statusPill = `<span class="pill ${mk.status}">${mk.status}</span>`;
+  const priceBadge = `<span class="ty">${isLine ? '⚡ Fixed odds' : 'Pool'}</span>`;
   const toggle = mk.status === 'settled' ? `<button class="btn btn-ghost btn-sm" onclick="reopenMarket(${mk.id})">Reopen</button>`
     : mk.status === 'open' ? `<button class="btn btn-ghost btn-sm" onclick="marketStatus(${mk.id},'closed')">Close</button>`
     : `<button class="btn btn-ghost btn-sm" onclick="marketStatus(${mk.id},'open')">Open</button>`;
+
+  const canLine = (mk.type === 'win' || mk.type === 'h2h');
+  const amerMap = {}; (mk.lines || []).forEach(l => { if (l.decimal != null) amerMap[l.contestant_id] = l.odds; });
+  const lineEditor = !canLine ? '' : `
+    <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="toggleLineEditor(${mk.id})">⚡ ${isLine ? 'Edit odds line' : 'Set odds line'}</button>
+    <div id="lineEditor_${mk.id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <div class="hint" style="margin-top:0;margin-bottom:8px">Paste the book's American odds for each side. SideBet strips the juice; bets pay these fair odds and match against each other.</div>
+      ${mk.eligible.map(cid => { const c = cMap[cid]; return `<div class="fg"><label>${c ? (c.emoji + ' ' + esc(c.name)) : cid}</label><input id="line_${mk.id}_${cid}" type="number" inputmode="numeric" placeholder="e.g. -150" value="${amerMap[cid] != null ? amerMap[cid] : ''}"></div>`; }).join('')}
+      <div id="linePrev_${mk.id}" style="font-size:0.8rem;color:var(--muted);margin:4px 0 10px"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="previewLine(${mk.id})">Preview de-vig</button>
+        <button class="btn btn-primary btn-sm" onclick="saveLine(${mk.id})">Save fair line</button>
+        ${isLine ? `<button class="btn btn-ghost btn-sm" onclick="setPricingPool(${mk.id})">Back to pool</button>` : ''}
+      </div>
+    </div>`;
+
   return `<div class="market-admin">
-    <div class="mh"><span class="nm">${esc(mk.name)}</span><span class="ty">${TYPE_LABEL[mk.type]}${mk.type==='topn'?' ('+mk.top_n+')':''}</span>${statusPill}</div>
-    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">${money(mk.pool)} in pool · ${(mk.bets||[]).length} bets · ${mk.eligible.length} eligible</div>
+    <div class="mh"><span class="nm">${esc(mk.name)}</span>${priceBadge}<span class="ty">${TYPE_LABEL[mk.type]}${mk.type==='topn'?' ('+mk.top_n+')':''}</span>${statusPill}</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">${money(mk.pool)} ${isLine?'at stake':'in pool'} · ${(mk.bets||[]).length} bets · ${mk.eligible.length} eligible</div>
     <div class="btn-row">${toggle}<button class="btn btn-danger btn-sm" onclick="delMarket(${mk.id})">Delete</button></div>
+    ${lineEditor}
   </div>`;
+}
+function collectLineOdds(mid) {
+  const odds = {};
+  document.querySelectorAll(`[id^="line_${mid}_"]`).forEach(inp => {
+    const cid = inp.id.split('_').pop();
+    if (inp.value !== '' && !isNaN(Number(inp.value)) && Number(inp.value) !== 0) odds[cid] = Number(inp.value);
+  });
+  return odds;
+}
+function toggleLineEditor(mid) { const el = document.getElementById('lineEditor_' + mid); el.style.display = el.style.display === 'none' ? '' : 'none'; }
+async function previewLine(mid) {
+  const odds = collectLineOdds(mid);
+  if (Object.keys(odds).length < 2) return toast('Enter odds for at least two', true);
+  try {
+    const r = await api('POST', `/api/admin/market/${mid}/lines`, { odds, format: 'american', preview: true });
+    const cMap = {}; for (const c of (data.contestants||[])) cMap[c.id] = c;
+    document.getElementById('linePrev_' + mid).innerHTML = 'Fair odds → ' + r.lines.map(l =>
+      `${cMap[l.contestant_id] ? esc(cMap[l.contestant_id].name) : l.contestant_id}: <strong style="color:var(--accent)">${l.american > 0 ? '+' + l.american : l.american}</strong> (${l.trueProb}%)`).join(' · ');
+  } catch (e) { toast(e.message, true); }
+}
+async function saveLine(mid) {
+  const odds = collectLineOdds(mid);
+  if (Object.keys(odds).length < 2) return toast('Enter odds for at least two', true);
+  try { await api('POST', `/api/admin/market/${mid}/lines`, { odds, format: 'american' }); toast('Fair line saved ⚡'); await load(); } catch (e) { toast(e.message, true); }
+}
+async function setPricingPool(mid) {
+  if (!confirm('Switch this pool back to pari-mutuel? The fixed line will be removed.')) return;
+  try { await api('POST', `/api/admin/market/${mid}/pricing`, { pricing: 'pool' }); toast('Switched to pool'); await load(); } catch (e) { toast(e.message, true); }
 }
 function onTypeChange() {
   const t = document.getElementById('nmType'); if (!t) return;

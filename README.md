@@ -18,6 +18,18 @@ Every kind of bet collapses into one primitive: a **market** (a pool) where peop
 
 An event can run **many markets at once** — e.g. a race day with a Win pool, a Place pool, and a couple of grudge-match head-to-heads, all live simultaneously.
 
+## Two pricing modes
+
+Each Win or Head-to-Head market can run in one of two modes:
+
+- **Pool (pari-mutuel)** — the default. No odds are fixed; the pool is split among the winners by stake at settlement. Can never be short, but you don't know your exact payout until betting closes.
+- **Fixed odds (line)** — the host pastes a real book's American odds (e.g. `-150 / +130`); SideBet **strips the juice** (de-vigs to fair odds that sum to 100%) and bets lock those fixed odds. Settlement uses **match-then-pool**:
+  - Winners are paid their locked fixed odds, funded by the losing money.
+  - If the winner was *over-backed* (losing money can't cover full fixed odds), winner profits scale down pro-rata so the pool clears exactly — never a shortfall.
+  - If the winner was *under-backed* (leftover losing money), the surplus is refunded to losers pro-rata — no juice is kept.
+
+  Each line chip shows a live **coverage %** — how much of that pick's fixed-odds winnings the opposing money currently covers. The rest pools/scales at settlement. This is how you get fixed Vegas-style numbers among friends without a bookmaker holding the risk.
+
 ## Templates
 
 Creating an event from a template seeds example contestants and the right pools so you're live in seconds. Everything is editable afterward.

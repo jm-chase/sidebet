@@ -114,11 +114,46 @@ function americanOdds(profitRatio) {
   return profitRatio >= 1 ? Math.round(profitRatio * 100) : -Math.round(100 / profitRatio);
 }
 
+function americanToDecimal(a) {
+  a = Number(a);
+  return a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+}
+
+function decimalToAmerican(d) {
+  d = Number(d);
+  if (!(d > 1)) return null;
+  return d >= 2 ? Math.round((d - 1) * 100) : -Math.round(100 / (d - 1));
+}
+
+function round6(n) { return Math.round(n * 1e6) / 1e6; }
+
+// Strip the bookmaker overround so the implied probabilities sum to 100%, then
+// return the fair (no-juice) decimal odds. Input: [{ contestant_id, decimal }].
+function devig(entries) {
+  const overround = entries.reduce((s, e) => s + 1 / e.decimal, 0);
+  return entries.map(e => {
+    const trueProb = (1 / e.decimal) / overround;
+    return { contestant_id: e.contestant_id, decimal: round6(1 / trueProb), trueProb };
+  });
+}
+
+function getMarketLines(marketId) {
+  const rows = db.prepare('SELECT contestant_id, decimal_odds FROM market_lines WHERE market_id = ?').all(marketId);
+  const map = {};
+  for (const r of rows) map[r.contestant_id] = r.decimal_odds;
+  return map;
+}
+
 // Builds a display-ready market: pool totals, per-contestant backing, live odds.
+// In a 'line' market each contestant carries fixed de-vigged odds plus a live
+// "coverage" — how much of that pick's fixed-odds profit the opposing money can
+// currently cover (the rest would pool/scale at settlement).
 function enrichMarket(market, eventContestantIds, rakePct) {
   const bets = db.prepare('SELECT * FROM bets WHERE market_id = ?').all(market.id);
   const pool = bets.reduce((s, b) => s + b.amount, 0);
   const distributable = pool * (1 - rakePct / 100);
+  const isLine = market.pricing === 'line';
+  const lineMap = isLine ? getMarketLines(market.id) : {};
 
   const byContestant = {};
   for (const b of bets) byContestant[b.contestant_id] = (byContestant[b.contestant_id] || 0) + b.amount;
@@ -127,21 +162,75 @@ function enrichMarket(market, eventContestantIds, rakePct) {
   const lines = eligible.map(cid => {
     const backed = byContestant[cid] || 0;
     const share = pool > 0 ? backed / pool : 0;
-    // For win / h2h we can quote true pari-mutuel odds: if this contestant wins,
-    // its backers split the whole distributable pool. top-N payouts depend on the
-    // other in-the-money finishers, so we quote pool share instead.
-    let odds = null;
-    if ((market.type === 'win' || market.type === 'h2h') && backed > 0 && pool > backed) {
-      odds = americanOdds((distributable - backed) / backed);
+    let odds = null, decimal = null, coverage = null;
+    if (isLine) {
+      decimal = lineMap[cid] || null;
+      if (decimal) {
+        odds = decimalToAmerican(decimal);
+        // Fixed-odds profit owed if this pick wins vs. the money on the other side.
+        const desired = bets.filter(b => b.contestant_id === cid)
+          .reduce((s, b) => s + b.amount * ((b.odds || decimal) - 1), 0);
+        const losing = pool - backed;
+        coverage = desired > 0 ? Math.round(Math.min(1, losing / desired) * 100) : 100;
+      }
     } else if ((market.type === 'win' || market.type === 'h2h') && backed > 0) {
-      odds = -99999; // sole backer / nobody else in pool
+      // Pari-mutuel implied odds: backers of the winner split the whole pool.
+      odds = pool > backed ? americanOdds((distributable - backed) / backed) : -99999;
     }
-    return { contestant_id: cid, backed: round2(backed), share: Math.round(share * 100), odds };
+    return { contestant_id: cid, backed: round2(backed), share: Math.round(share * 100), odds, decimal, coverage };
   });
 
   const results = db.prepare('SELECT contestant_id, rank FROM market_results WHERE market_id = ? ORDER BY rank').all(market.id);
   const out = { ...market, pool: round2(pool), eligible, lines, bets, results };
-  if (market.status === 'settled') out.payouts = settleMarket(market, bets, eventContestantIds, rakePct);
+  if (market.status === 'settled') out.payouts = settle(market, bets, eventContestantIds, rakePct);
+  return out;
+}
+
+// Routes a market to the right settlement engine.
+function settle(market, bets, eventContestantIds, rakePct) {
+  return market.pricing === 'line'
+    ? settleLinedMarket(market, bets)
+    : settleMarket(market, bets, eventContestantIds, rakePct);
+}
+
+// Fixed-odds "match-then-pool" settlement (single winner; win/h2h markets).
+//
+//   • MATCH: winners are paid their locked fixed odds, funded by the losing money.
+//   • POOL : if the winner was over-backed (losing money can't cover full fixed
+//            odds), winner profits scale down pro-rata so the pool exactly clears
+//            — never a shortfall. If the winner was under-backed (leftover losing
+//            money), the surplus is refunded to losers pro-rata — no juice kept.
+//
+// Push / no winning bets ⇒ everyone refunded.
+function settleLinedMarket(market, bets) {
+  if (!bets) bets = db.prepare('SELECT * FROM bets WHERE market_id = ?').all(market.id);
+  if (market.is_push) return bets.map(b => ({ bet: b, payout: 0, refund: round2(b.amount) }));
+
+  const winnerRow = db.prepare('SELECT contestant_id FROM market_results WHERE market_id = ? AND rank = 1').get(market.id);
+  const winnerId = winnerRow ? winnerRow.contestant_id : null;
+  const winningBets = bets.filter(b => b.contestant_id === winnerId);
+  const losingBets = bets.filter(b => b.contestant_id !== winnerId);
+
+  if (winningBets.length === 0) return bets.map(b => ({ bet: b, payout: 0, refund: round2(b.amount) }));
+
+  const losingPool = losingBets.reduce((s, b) => s + b.amount, 0);
+  const desiredProfit = winningBets.reduce((s, b) => s + b.amount * ((b.odds || 2) - 1), 0);
+
+  if (desiredProfit <= losingPool) {
+    // Fully matched at fixed odds; return unused losing money to losers.
+    const surplus = losingPool - desiredProfit;
+    const out = winningBets.map(b => ({ bet: b, payout: round2(b.amount + b.amount * ((b.odds || 2) - 1)), refund: 0 }));
+    for (const b of losingBets) {
+      const refund = losingPool > 0 ? surplus * (b.amount / losingPool) : 0;
+      out.push({ bet: b, payout: 0, refund: round2(refund) });
+    }
+    return out;
+  }
+
+  // Over-backed winner: scale profits to the available losing money (pool fallback).
+  const scale = losingPool / desiredProfit;
+  const out = winningBets.map(b => ({ bet: b, payout: round2(b.amount + b.amount * ((b.odds || 2) - 1) * scale), refund: 0 }));
+  for (const b of losingBets) out.push({ bet: b, payout: 0, refund: 0 });
   return out;
 }
 
@@ -189,7 +278,7 @@ function computeBettorStats(filterName) {
     const cids = getContestants(ev.id).map(c => c.id);
     const markets = db.prepare("SELECT * FROM markets WHERE event_id = ? AND status = 'settled'").all(ev.id);
     for (const m of markets) {
-      for (const { bet, payout, refund } of settleMarket(m, null, cids, ev.rake_pct)) {
+      for (const { bet, payout, refund } of settle(m, null, cids, ev.rake_pct)) {
         const b = ensure(bet.bettor_name);
         b.wagered += bet.amount;
         b.bets++;
@@ -264,9 +353,17 @@ app.post('/api/bet', (req, res) => {
     return res.status(400).json({ error: 'That pick is not in this pool' });
   }
 
+  // Line markets lock the fair odds at placement time; reject picks without a line.
+  let odds = null;
+  if (market.pricing === 'line') {
+    const row = db.prepare('SELECT decimal_odds FROM market_lines WHERE market_id = ? AND contestant_id = ?').get(market_id, contestant_id);
+    if (!row) return res.status(400).json({ error: 'No odds line set for that pick yet' });
+    odds = row.decimal_odds;
+  }
+
   const id = randomUUID();
-  db.prepare('INSERT INTO bets (id, market_id, bettor_name, contestant_id, amount) VALUES (?, ?, ?, ?, ?)')
-    .run(id, market_id, String(bettor).trim(), contestant_id, amount);
+  db.prepare('INSERT INTO bets (id, market_id, bettor_name, contestant_id, amount, odds) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, market_id, String(bettor).trim(), contestant_id, amount, odds);
   res.json({ id });
 });
 
@@ -352,6 +449,7 @@ app.delete('/api/admin/event/:id', (req, res) => {
     db.prepare('DELETE FROM bets WHERE market_id = ?').run(mid);
     db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
     db.prepare('DELETE FROM market_contestants WHERE market_id = ?').run(mid);
+    db.prepare('DELETE FROM market_lines WHERE market_id = ?').run(mid);
   }
   db.prepare('DELETE FROM markets WHERE event_id = ?').run(id);
   db.prepare('DELETE FROM contestants WHERE event_id = ?').run(id);
@@ -425,6 +523,51 @@ app.post('/api/admin/market/:id/status', (req, res) => {
   res.json({ ok: true });
 });
 
+// Set fixed-odds lines from posted odds (typically a Vegas line), with the juice
+// removed. Body: { odds: { contestant_id: value }, format: 'american'|'decimal', preview }.
+// Returns the fair de-vigged odds; saves them and flips the market to 'line' unless preview.
+app.post('/api/admin/market/:id/lines', (req, res) => {
+  const mid = req.params.id;
+  const market = db.prepare('SELECT * FROM markets WHERE id = ?').get(mid);
+  if (!market) return res.status(404).json({ error: 'Market not found' });
+  if (!['win', 'h2h'].includes(market.type)) {
+    return res.status(400).json({ error: 'Fixed-odds lines are only for Win or Head-to-Head pools' });
+  }
+  const { odds, format = 'american', preview = false } = req.body;
+  if (!odds || typeof odds !== 'object') return res.status(400).json({ error: 'odds map required' });
+
+  const entries = Object.entries(odds)
+    .filter(([, v]) => v !== '' && v != null && !isNaN(Number(v)) && Number(v) !== 0)
+    .map(([cid, v]) => ({ contestant_id: Number(cid), decimal: format === 'decimal' ? Number(v) : americanToDecimal(Number(v)) }))
+    .filter(e => e.decimal > 1);
+  if (entries.length < 2) return res.status(400).json({ error: 'Enter valid odds for at least two contestants' });
+
+  const fair = devig(entries);
+  if (!preview) {
+    db.prepare('DELETE FROM market_lines WHERE market_id = ?').run(mid);
+    const ins = db.prepare('INSERT INTO market_lines (market_id, contestant_id, decimal_odds) VALUES (?, ?, ?)');
+    for (const f of fair) ins.run(mid, f.contestant_id, f.decimal);
+    db.prepare("UPDATE markets SET pricing = 'line' WHERE id = ?").run(mid);
+  }
+  res.json({
+    lines: fair.map(f => ({
+      contestant_id: f.contestant_id,
+      decimal: f.decimal,
+      american: decimalToAmerican(f.decimal),
+      trueProb: Math.round(f.trueProb * 1000) / 10,
+    })),
+  });
+});
+
+// Switch a market between pari-mutuel pool pricing and fixed-odds line pricing.
+app.post('/api/admin/market/:id/pricing', (req, res) => {
+  const { pricing } = req.body;
+  if (!['pool', 'line'].includes(pricing)) return res.status(400).json({ error: 'pricing must be pool or line' });
+  if (pricing === 'pool') db.prepare('DELETE FROM market_lines WHERE market_id = ?').run(req.params.id);
+  db.prepare('UPDATE markets SET pricing = ? WHERE id = ?').run(pricing, req.params.id);
+  res.json({ ok: true });
+});
+
 // Settle a market with a finishing order. ranks: [{ contestant_id, rank }].
 app.post('/api/admin/market/:id/result', (req, res) => {
   const mid = req.params.id;
@@ -455,6 +598,7 @@ app.delete('/api/admin/market/:id', (req, res) => {
   db.prepare('DELETE FROM bets WHERE market_id = ?').run(mid);
   db.prepare('DELETE FROM market_results WHERE market_id = ?').run(mid);
   db.prepare('DELETE FROM market_contestants WHERE market_id = ?').run(mid);
+  db.prepare('DELETE FROM market_lines WHERE market_id = ?').run(mid);
   db.prepare('DELETE FROM markets WHERE id = ?').run(mid);
   res.json({ ok: true });
 });

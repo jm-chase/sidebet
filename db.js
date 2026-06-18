@@ -80,7 +80,18 @@ db.exec(`
     bettor_name   TEXT NOT NULL,
     contestant_id INTEGER NOT NULL,
     amount        REAL NOT NULL,
+    odds          REAL,                     -- locked fair decimal odds (line markets); NULL for pool markets
     timestamp     TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (market_id) REFERENCES markets(id),
+    FOREIGN KEY (contestant_id) REFERENCES contestants(id)
+  );
+
+  -- Fair (de-vigged) fixed odds per contestant for a line-priced market.
+  CREATE TABLE IF NOT EXISTS market_lines (
+    market_id     INTEGER NOT NULL,
+    contestant_id INTEGER NOT NULL,
+    decimal_odds  REAL NOT NULL,
+    UNIQUE(market_id, contestant_id),
     FOREIGN KEY (market_id) REFERENCES markets(id),
     FOREIGN KEY (contestant_id) REFERENCES contestants(id)
   );
@@ -89,5 +100,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_markets_event ON markets(event_id);
   CREATE INDEX IF NOT EXISTS idx_bets_market ON bets(market_id);
 `);
+
+// Migrations for databases created before line-pricing existed.
+function ensureColumn(table, col, ddl) {
+  const has = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === col);
+  if (!has) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+ensureColumn('markets', 'pricing', "pricing TEXT NOT NULL DEFAULT 'pool'"); // 'pool' | 'line'
+ensureColumn('bets', 'odds', 'odds REAL');
 
 module.exports = db;

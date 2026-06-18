@@ -420,28 +420,44 @@ function renderPools() {
 
 function marketCard(mk, m, live) {
   const closed = mk.status === 'closed' || !live;
-  const lines = (mk.lines || []).slice().sort((a, b) => b.backed - a.backed || a.contestant_id - b.contestant_id);
+  const isLine = mk.pricing === 'line';
+  const lines = (mk.lines || []).slice().sort((a, b) =>
+    isLine ? ((a.decimal || 99) - (b.decimal || 99)) : (b.backed - a.backed || a.contestant_id - b.contestant_id));
+
   const chips = lines.map(ln => {
     const c = m[ln.contestant_id];
-    const oddsTxt = ln.odds === -99999 ? 'Even' : (ln.odds == null ? '—' : (ln.odds > 0 ? '+' + ln.odds : ln.odds));
-    const showOdds = (mk.type === 'win' || mk.type === 'h2h');
-    const right = showOdds
-      ? `<div class="odds ${ln.odds!=null?'pos':''}">${oddsTxt}</div><div class="share">${money(ln.backed)}</div>`
-      : `<div class="odds pos">${ln.share}%</div><div class="share">${money(ln.backed)}</div>`;
-    const onclick = closed ? '' : `onclick="openBetSheet(${mk.id},${ln.contestant_id})"`;
-    return `<button class="chip" ${onclick} ${closed?'style="cursor:default"':''}>
+    let right, barPct, clickable;
+    if (isLine) {
+      const has = ln.decimal != null;
+      const oddsTxt = has ? (ln.odds > 0 ? '+' + ln.odds : ln.odds) : '—';
+      const sub = (ln.coverage != null && ln.coverage < 100) ? `${ln.coverage}% matched` : money(ln.backed);
+      right = `<div class="odds ${has ? 'pos' : ''}">${oddsTxt}</div><div class="share">${sub}</div>`;
+      barPct = ln.coverage != null ? ln.coverage : 0;
+      clickable = has && !closed;
+    } else {
+      const showOdds = (mk.type === 'win' || mk.type === 'h2h');
+      const oddsTxt = ln.odds === -99999 ? 'Even' : (ln.odds == null ? '—' : (ln.odds > 0 ? '+' + ln.odds : ln.odds));
+      right = showOdds
+        ? `<div class="odds ${ln.odds!=null?'pos':''}">${oddsTxt}</div><div class="share">${money(ln.backed)}</div>`
+        : `<div class="odds pos">${ln.share}%</div><div class="share">${money(ln.backed)}</div>`;
+      barPct = ln.share;
+      clickable = !closed;
+    }
+    const onclick = clickable ? `onclick="openBetSheet(${mk.id},${ln.contestant_id})"` : '';
+    return `<button class="chip" ${onclick} ${!clickable?'style="cursor:default"':''}>
       ${ava(c)}
       <div class="who"><div class="n">${c?esc(c.name):'?'}</div>${c&&c.subtitle?`<div class="s">${esc(c.subtitle)}</div>`:''}
-        <div class="barwrap"><div class="bar" style="width:${ln.share}%"></div></div></div>
+        <div class="barwrap"><div class="bar" style="width:${barPct}%"></div></div></div>
       <div class="right">${right}</div>
     </button>`;
   }).join('');
 
+  const tag = isLine ? 'Fixed odds' : (TYPE_LABEL[mk.type] || mk.type);
   return `<div class="market">
     <div class="market-head">
       <span class="name">${esc(mk.name)}</span>
-      <span class="tag">${TYPE_LABEL[mk.type] || mk.type}</span>
-      <div class="pool"><div class="v">${money(mk.pool)}</div><div class="l">${closed?'closed':'pool'}</div></div>
+      <span class="tag">${tag}</span>
+      <div class="pool"><div class="v">${money(mk.pool)}</div><div class="l">${closed?'closed':(isLine?'at stake':'pool')}</div></div>
     </div>
     ${chips}
   </div>`;
@@ -577,18 +593,24 @@ function bumpAmount(d) {
 function renderBetSheet() {
   if (!bet) return;
   const c = bet.contestant, mk = bet.market;
+  const isLine = mk.pricing === 'line';
   document.getElementById('betTitle').textContent = mk.name;
-  document.getElementById('betSub').textContent = TYPE_LABEL[mk.type] || '';
-  const line = (mk.lines || []).find(l => l.contestant_id === c.id) || { backed: 0, odds: null, share: 0 };
+  document.getElementById('betSub').textContent = isLine ? 'Fixed odds — locked when you place' : (TYPE_LABEL[mk.type] || '');
+  const line = (mk.lines || []).find(l => l.contestant_id === c.id) || { backed: 0, odds: null, share: 0, decimal: null };
   const showOdds = (mk.type === 'win' || mk.type === 'h2h');
-  const oddsTxt = showOdds ? (line.odds === -99999 ? 'Even money' : line.odds == null ? 'No bets yet' : (line.odds > 0 ? '+' + line.odds : line.odds) + ' odds') : line.share + '% of pool';
+  let oddsTxt;
+  if (isLine) oddsTxt = line.odds != null ? (line.odds > 0 ? '+' + line.odds : line.odds) + ' fixed' : 'No line set';
+  else oddsTxt = showOdds ? (line.odds === -99999 ? 'Even money' : line.odds == null ? 'No bets yet' : (line.odds > 0 ? '+' + line.odds : line.odds) + ' odds') : line.share + '% of pool';
   document.getElementById('betPick').innerHTML = `${ava(c)}<div><div class="n">${esc(c.name)}</div><div class="m">${oddsTxt} · ${money(line.backed)} backed</div></div>`;
   const min = data.event.min_bet || 1;
   const chips = [min, 5, 10, 25, 50].filter((v, i, a) => v >= min && a.indexOf(v) === i).slice(0, 4);
   document.getElementById('quickChips').innerHTML = chips.map(v => `<button onclick="document.getElementById('betAmount').value=${v};renderBetSheet()">${cur()}${v}</button>`).join('');
   const amt = parseFloat(document.getElementById('betAmount').value) || 0;
-  document.getElementById('placeBtn').disabled = amt < min;
-  document.getElementById('placeBtn').textContent = amt >= min ? `Place ${money(amt)} on ${c.name}` : `Min bet ${money(min)}`;
+  const btn = document.getElementById('placeBtn');
+  btn.disabled = amt < min;
+  if (amt < min) btn.textContent = `Min bet ${money(min)}`;
+  else if (isLine && line.decimal) btn.textContent = `Bet ${money(amt)} to win ${money(amt * (line.decimal - 1))}`;
+  else btn.textContent = `Place ${money(amt)} on ${c.name}`;
 }
 async function submitBet() {
   if (!bet) return;
